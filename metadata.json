@@ -1,0 +1,8 @@
+{
+  "name": "Control de Herramientas",
+  "description": "Sistema integral de gestión de inventario, préstamos, devoluciones y trazabilidad de herramientas para administradores y técnicos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

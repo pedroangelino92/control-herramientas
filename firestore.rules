@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isHardcodedAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'pedroangelino92@gmail.com'
+      );
+    }
+    
+    function isAdmin() {
+      return isHardcodedAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin' &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.estado == 'activo'
+      );
+    }
+    
+    function isUserSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read: if isSignedIn();
+    }
+
+    // Colección de Usuarios
+    match /usuarios/{userId} {
+      // El propio usuario puede leer su registro, o cualquier usuario autenticado activo/admin para gestionar
+      allow read: if isSignedIn();
+      
+      // Permitir al usuario crear su propio perfil inicial
+      allow create: if isUserSelf(userId);
+      
+      // Actualizar: el propio usuario puede actualizar datos básicos, o un admin puede aprobar/cambiar rol
+      allow update: if isUserSelf(userId) || isAdmin();
+      
+      // Solo admins pueden eliminar cuentas
+      allow delete: if isAdmin();
+    }
+
+    // Colección de Herramientas
+    match /herramientas/{herramientaId} {
+      // Cualquier usuario autenticado puede consultar el inventario
+      allow read: if isSignedIn();
+      
+      // Crear, editar y dar de baja: Administradores o técnicos aprobados durante préstamos
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Colección de Préstamos y Devoluciones
+    match /prestamos/{prestamoId} {
+      // Lectura para usuarios autenticados
+      allow read: if isSignedIn();
+      
+      // Crear y actualizar préstamos / devoluciones
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Colección de Solicitudes de Retiro
+    match /solicitudes_retiro/{solicitudId} {
+      // Lectura para usuarios autenticados (técnicos ven sus solicitudes, admins ven todas)
+      allow read: if isSignedIn();
+      
+      // Crear: técnicos autenticados solicitan herramientas
+      allow create: if isSignedIn();
+      
+      // Actualizar: Administradores autorizan/rechazan, técnicos pueden cancelar si está pendiente
+      allow update: if isSignedIn();
+
+      // Eliminar: Administradores
+      allow delete: if isAdmin();
+    }
+
+    // Colección de Transferencias en Campo entre Técnicos
+    match /transferencias_campo/{transferenciaId} {
+      // Lectura para usuarios autenticados
+      allow read: if isSignedIn();
+      
+      // Crear traspaso en campo y confirmar recepción
+      allow create, update: if isSignedIn();
+      
+      // Eliminar: Administradores
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "entities": {
+    "Usuario": {
+      "title": "Usuario",
+      "description": "Perfil de usuario, estado de aprobación y rol en el sistema",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "nombre": { "type": "string" },
+        "email": { "type": "string" },
+        "rol": { "type": "string", "enum": ["admin", "tecnico"] },
+        "estado": { "type": "string", "enum": ["pendiente", "activo", "rechazado"] },
+        "fechaCreacion": { "type": "string" },
+        "aprobadoPor": { "type": "string" },
+        "fechaAprobacion": { "type": "string" }
+      },
+      "required": ["uid", "nombre", "email", "rol", "estado"]
+    },
+    "Herramienta": {
+      "title": "Herramienta",
+      "description": "Registro de herramienta en el inventario",
+      "type": "object",
+      "properties": {
+        "codigo": { "type": "string" },
+        "nombre": { "type": "string" },
+        "marca": { "type": "string" },
+        "modelo": { "type": "string" },
+        "categoria": { "type": "string" },
+        "estado": { "type": "string", "enum": ["Disponible", "Prestada", "En Mantenimiento", "Fuera de servicio"] },
+        "ubicacion": { "type": "string" },
+        "notas": { "type": "string" },
+        "fotoUrl": { "type": "string" },
+        "tecnicoAsignadoUid": { "type": "string" },
+        "tecnicoAsignadoNombre": { "type": "string" },
+        "prestamoActualId": { "type": "string" },
+        "fechaCreacion": { "type": "string" },
+        "creadoPor": { "type": "string" }
+      },
+      "required": ["codigo", "nombre", "categoria", "estado"]
+    },
+    "Prestamo": {
+      "title": "Prestamo",
+      "description": "Registro de préstamo o entrega de herramienta a un técnico",
+      "type": "object",
+      "properties": {
+        "herramientaId": { "type": "string" },
+        "herramientaCodigo": { "type": "string" },
+        "herramientaNombre": { "type": "string" },
+        "tecnicoUid": { "type": "string" },
+        "tecnicoNombre": { "type": "string" },
+        "tecnicoEmail": { "type": "string" },
+        "adminUid": { "type": "string" },
+        "adminNombre": { "type": "string" },
+        "fechaPrestamo": { "type": "string" },
+        "fechaEstimadaDevolucion": { "type": "string" },
+        "fechaDevolucion": { "type": "string" },
+        "estado": { "type": "string", "enum": ["Activo", "Devuelto", "Atrasado"] },
+        "condicionEntrega": { "type": "string" },
+        "condicionDevolucion": { "type": "string" },
+        "observacionesEntrega": { "type": "string" },
+        "observacionesDevolucion": { "type": "string" }
+      },
+      "required": ["herramientaId", "tecnicoUid", "fechaPrestamo", "estado"]
+    },
+    "SolicitudRetiro": {
+      "title": "SolicitudRetiro",
+      "description": "Solicitud de retiro o préstamo de una o varias herramientas realizada por un técnico",
+      "type": "object",
+      "properties": {
+        "nroSolicitud": { "type": "string" },
+        "tecnicoUid": { "type": "string" },
+        "tecnicoNombre": { "type": "string" },
+        "tecnicoEmail": { "type": "string" },
+        "herramientas": { "type": "array" },
+        "cantidadTotal": { "type": "number" },
+        "fechaSolicitud": { "type": "string" },
+        "fechaEstimadaDevolucion": { "type": "string" },
+        "motivoUso": { "type": "string" },
+        "estado": { "type": "string", "enum": ["Pendiente", "Aprobada", "Rechazada", "Cancelada"] },
+        "fechaRespuesta": { "type": "string" },
+        "adminRespuestaUid": { "type": "string" },
+        "adminRespuestaNombre": { "type": "string" },
+        "motivoRechazo": { "type": "string" },
+        "observacionesEntrega": { "type": "string" }
+      },
+      "required": ["nroSolicitud", "tecnicoUid", "tecnicoNombre", "herramientas", "cantidadTotal", "fechaSolicitud", "estado"]
+    },
+    "TransferenciaCampo": {
+      "title": "TransferenciaCampo",
+      "description": "Transferencia de herramientas mano a mano entre técnicos en campo con geolocalización de ambos",
+      "type": "object",
+      "properties": {
+        "nroTransferencia": { "type": "string" },
+        "herramientaId": { "type": "string" },
+        "herramientaCodigo": { "type": "string" },
+        "herramientaNombre": { "type": "string" },
+        "tecnicoEmisorUid": { "type": "string" },
+        "tecnicoEmisorNombre": { "type": "string" },
+        "tecnicoEmisorEmail": { "type": "string" },
+        "tecnicoReceptorUid": { "type": "string" },
+        "tecnicoReceptorNombre": { "type": "string" },
+        "tecnicoReceptorEmail": { "type": "string" },
+        "fechaInicio": { "type": "string" },
+        "fechaConfirmacion": { "type": "string" },
+        "estado": { "type": "string", "enum": ["PendienteConfirmacion", "Completada", "Rechazada", "Cancelada"] },
+        "geoEmisor": { "type": "object" },
+        "geoReceptor": { "type": "object" },
+        "distanciaMetros": { "type": "number" },
+        "condicionEntrega": { "type": "string" },
+        "observaciones": { "type": "string" }
+      },
+      "required": ["nroTransferencia", "herramientaId", "tecnicoEmisorUid", "tecnicoReceptorUid", "fechaInicio", "estado"]
+    }
+  },
+  "firestore": {
+    "usuarios": {
+      "schema": "Usuario",
+      "description": "Usuarios del sistema con roles y estado de aprobación"
+    },
+    "herramientas": {
+      "schema": "Herramienta",
+      "description": "Inventario de herramientas del taller o empresa"
+    },
+    "prestamos": {
+      "schema": "Prestamo",
+      "description": "Historial y control activo de préstamos y devoluciones"
+    },
+    "solicitudes_retiro": {
+      "schema": "SolicitudRetiro",
+      "description": "Solicitudes de retiro de herramientas pendientes de autorización y su historial"
+    },
+    "transferencias_campo": {
+      "schema": "TransferenciaCampo",
+      "description": "Registro de traspasos de herramientas en campo entre técnicos con GPS"
+    }
+  }
+}
