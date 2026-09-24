@@ -16,7 +16,7 @@ export default defineConfig(() => {
         manifest: {
           id: './',
           name: 'Control de Herramientas',
-          short_name: 'CtrlHerram',
+          short_name: 'Control de Herramientas',
           description: 'Sistema de gestión de inventario, préstamos, devoluciones y trazabilidad de herramientas.',
           theme_color: '#09090b',
           background_color: '#09090b',

@@ -6,11 +6,9 @@ import {
   User, 
   Phone, 
   ArrowRight, 
-  ShieldCheck, 
   KeyRound, 
   AlertCircle,
   CheckCircle2,
-  Zap,
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -128,39 +126,6 @@ export const AuthView: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleAdminQuickLogin = async (adminEmail: string) => {
-    setEmail(adminEmail);
-    setPassword('admin123456');
-    setErrorMsg(null);
-    setIsInvalidCredential(false);
-    setSubmitting(true);
-
-    try {
-      await quickAdminAccess(adminEmail, 'admin123456');
-      showToast('success', 'Bienvenido Administrador', `Acceso concedido para ${adminEmail}`);
-    } catch (err: any) {
-      handleAuthError(err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const setFormToAdmin = (adminEmail: string) => {
-    setEmail(adminEmail);
-    setPassword('admin123456');
-    setNombre('Pedro Angelino');
-    setErrorMsg(null);
-    setIsInvalidCredential(false);
-  };
-
-  const setFormToUser = (userEmail: string) => {
-    setEmail(userEmail);
-    setPassword('admin123456');
-    setNombre('Pedro Mongelos');
-    setErrorMsg(null);
-    setIsInvalidCredential(false);
   };
 
   return (
@@ -465,65 +430,6 @@ export const AuthView: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Quick-fill helper according to specification */}
-          <div className="mt-6 pt-5 border-t border-zinc-800 text-[11px] text-zinc-400">
-            <div className="flex items-center gap-1.5 font-semibold text-zinc-300 mb-1">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>Administrador Permanente del Sistema:</span>
-            </div>
-            <p className="text-[10px] text-zinc-500 mb-3">
-              Cuenta con rol de Administrador permanente e inmutable:
-            </p>
-
-            <div className="space-y-2">
-              <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-mono text-[11px] text-amber-400 font-semibold truncate">
-                    pedroangelino92@gmail.com
-                  </div>
-                  <div className="text-[10px] text-zinc-500">Administrador Principal (Siempre Admin)</div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleAdminQuickLogin('pedroangelino92@gmail.com')}
-                    disabled={submitting}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold text-[11px] transition-colors flex items-center gap-1"
-                    title="Ingresar directamente con 1 clic"
-                  >
-                    <Zap className="w-3 h-3 text-amber-400" />
-                    <span>Acceder</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormToAdmin('pedroangelino92@gmail.com')}
-                    className="px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] transition-colors"
-                  >
-                    Llenar
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/60 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-mono text-[11px] text-zinc-300 font-medium truncate">
-                    pedromongelos92@gmail.com
-                  </div>
-                  <div className="text-[10px] text-zinc-500">Técnico (gestionable desde el panel)</div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setFormToUser('pedromongelos92@gmail.com')}
-                    className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] transition-colors"
-                  >
-                    Llenar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
