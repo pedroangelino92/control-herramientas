@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   onOpenScanner: () => void;
@@ -66,6 +67,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* PWA Install Button */}
+          <PWAInstallButton />
+
           {/* Quick Scanner button */}
           <button
             onClick={onOpenScanner}

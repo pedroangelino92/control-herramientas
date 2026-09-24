@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b"/>
+      <stop offset="100%" stop-color="#09090b"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#f59e0b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Background with safe zone -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#27272a" stroke-width="4"/>
+  
+  <!-- Icon: Wrench & Screwdriver / Hardware -->
+  <g transform="translate(256, 256) scale(1.15) translate(-128, -128)" filter="url(#glow)">
+    <!-- Wrench -->
+    <path d="M196.4 59.6a48 48 0 0 0-54.8 11.2l-21.6 21.6 43.4 43.4 21.6-21.6a48 48 0 0 0 11.4-54.6zm-86.8 43.2L34.2 178.2a24 24 0 0 0 0 33.9l9.7 9.7a24 24 0 0 0 33.9 0l75.4-75.4-43.6-43.6z" fill="url(#amber)"/>
+    <!-- Screwdriver / Hammer / Gear Accent -->
+    <circle cx="128" cy="128" r="14" fill="#09090b" stroke="#fbbf24" stroke-width="6"/>
+    <path d="M72 184 L184 72" stroke="#f59e0b" stroke-width="12" stroke-linecap="round"/>
+    <path d="M150 170 L200 220" stroke="#f59e0b" stroke-width="16" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 type AuthMode = 'login' | 'register' | 'forgot';
 
@@ -176,6 +177,9 @@ export const AuthView: React.FC = () => {
           <p className="text-sm text-zinc-400 mt-1">
             Gestión inteligente de inventario, préstamos y trazabilidad
           </p>
+          <div className="flex justify-center mt-3">
+            <PWAInstallButton />
+          </div>
         </div>
 
         {/* Auth Card */}
