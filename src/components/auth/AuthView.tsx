@@ -9,7 +9,8 @@ import {
   KeyRound, 
   AlertCircle,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -350,6 +351,13 @@ export const AuthView: React.FC = () => {
                       className="w-full pl-10 pr-4 py-2.5 bg-zinc-950 border border-zinc-700/80 rounded-xl text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-2">
+                  <UserCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                  <span>
+                    <strong>Perfil predeterminado: Técnico.</strong> Toda cuenta nueva queda registrada en estado <strong>Pendiente</strong> y requerirá la aprobación de un Administrador para ingresar al sistema.
+                  </span>
                 </div>
               </>
             )}

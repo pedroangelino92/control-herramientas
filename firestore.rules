@@ -37,14 +37,23 @@ service cloud.firestore {
 
     // Colección de Usuarios
     match /usuarios/{userId} {
-      // El propio usuario puede leer su registro, o cualquier usuario autenticado activo/admin para gestionar
+      // Cualquier usuario autenticado puede leer para mostrar nombres de técnicos y asignaciones
       allow read: if isSignedIn();
       
-      // Permitir al usuario crear su propio perfil inicial
-      allow create: if isUserSelf(userId);
+      // Permitir al usuario crear su propio perfil inicial con rol 'tecnico' y estado 'pendiente' (salvo el admin inicial)
+      allow create: if isUserSelf(userId) && (
+        isHardcodedAdmin() || (
+          request.resource.data.rol == 'tecnico' &&
+          request.resource.data.estado == 'pendiente'
+        )
+      );
       
-      // Actualizar: el propio usuario puede actualizar datos básicos, o un admin puede aprobar/cambiar rol
-      allow update: if isUserSelf(userId) || isAdmin();
+      // Actualizar: solo un admin puede cambiar rol y estado. El propio usuario solo puede editar su perfil sin alterar rol ni estado.
+      allow update: if isAdmin() || (
+        isUserSelf(userId) && 
+        request.resource.data.rol == resource.data.rol && 
+        request.resource.data.estado == resource.data.estado
+      );
       
       // Solo admins pueden eliminar cuentas
       allow delete: if isAdmin();

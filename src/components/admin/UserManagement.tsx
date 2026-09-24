@@ -324,6 +324,32 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
+                ) : isUserRejected ? (
+                  <div className="flex items-center gap-2 w-full justify-between flex-wrap">
+                    <span className="text-xs text-rose-400 font-semibold">Cuenta suspendida</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setActionUser(user);
+                          setActionType('approve_tech');
+                        }}
+                        className="px-2.5 py-1 text-xs font-semibold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Habilitar Técnico</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActionUser(user);
+                          setActionType('approve_admin');
+                        }}
+                        className="px-2.5 py-1 text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Habilitar Admin</span>
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-2 w-full justify-between">
                     <div className="flex items-center gap-1.5">
