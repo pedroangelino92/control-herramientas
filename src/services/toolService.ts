@@ -701,7 +701,7 @@ export const createTransferenciaCampo = async (input: {
       herramientaId: input.herramienta.id!,
       herramientaCodigo: input.herramienta.codigo,
       herramientaNombre: input.herramienta.nombre,
-      herramientaMarca: input.herramienta.marca,
+      herramientaMarca: input.herramienta.marca || '',
       prestamoOrigenId: input.prestamoOrigenId || input.herramienta.prestamoActualId || '',
       tecnicoEmisorUid: input.tecnicoEmisorUid,
       tecnicoEmisorNombre: input.tecnicoEmisorNombre,

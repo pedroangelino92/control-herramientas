@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Wrench, 
   ShieldCheck, 
@@ -7,11 +7,14 @@ import {
   Sun, 
   Moon,
   Bell,
-  Smartphone
+  Smartphone,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { PWAInstallButton } from './PWAInstallButton';
+import { ResetDatabaseModal } from './ResetDatabaseModal';
+import { SUPERADMIN_EMAIL } from '../../types';
 
 interface HeaderProps {
   onOpenScanner?: () => void;
@@ -34,6 +37,12 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { currentUser, userProfile, isAdmin, logout } = useAuth();
   const { showToast } = useToast();
+
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+
+  const isSuperAdmin = 
+    currentUser?.email?.toLowerCase().trim() === SUPERADMIN_EMAIL.toLowerCase().trim() ||
+    Boolean(currentUser?.email?.toLowerCase().includes('pedroangelino92'));
 
   const handleLogout = async () => {
     try {
@@ -60,6 +69,20 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-sm sm:text-base font-black tracking-tight text-white truncate max-w-[160px] sm:max-w-xs">
                 {displayName}
               </h1>
+
+              {/* Icon next to Pedro Angelino to reset database to zero */}
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(true)}
+                  className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 transition-all flex items-center justify-center shrink-0 active:scale-90"
+                  title="Restablecer todo a cero (Requiere contraseña)"
+                  aria-label="Restablecer base de datos a cero"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
+
               <span className={`text-[9px] sm:text-[10px] uppercase font-black tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border shrink-0 ${
                 isAdmin 
                   ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' 
@@ -138,6 +161,14 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Reset Database Modal (Only accessible via Pedro Angelino's header icon) */}
+      {isSuperAdmin && (
+        <ResetDatabaseModal
+          isOpen={isResetModalOpen}
+          onClose={() => setIsResetModalOpen(false)}
+        />
+      )}
     </header>
   );
 };

@@ -138,7 +138,7 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
           (h) =>
             h.nombre.toLowerCase().includes(term) ||
             h.codigo.toLowerCase().includes(term) ||
-            h.marca.toLowerCase().includes(term)
+            (h.marca ? h.marca.toLowerCase().includes(term) : false)
         );
 
       return matchesFilter && matchesSearch;

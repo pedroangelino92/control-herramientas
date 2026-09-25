@@ -26,7 +26,7 @@ export const QuickScannerModal: React.FC<QuickScannerModalProps> = ({
         (h) =>
           h.codigo.toLowerCase().includes(cleanInput) ||
           h.nombre.toLowerCase().includes(cleanInput) ||
-          h.marca.toLowerCase().includes(cleanInput) ||
+          (h.marca ? h.marca.toLowerCase().includes(cleanInput) : false) ||
           (h.numeroSerie && h.numeroSerie.toLowerCase().includes(cleanInput))
       )
     : [];

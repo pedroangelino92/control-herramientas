@@ -71,6 +71,14 @@ service cloud.firestore {
       allow delete: if isHardcodedAdmin();
     }
 
+    // Colección de Categorías de Herramientas
+    match /categorias/{categoriaId} {
+      // Cualquier usuario autenticado puede consultar categorías
+      allow read: if isSignedIn();
+      // Crear, editar y eliminar: solo administradores
+      allow create, update, delete: if isAdmin();
+    }
+
     // Colección de Préstamos y Devoluciones
     match /prestamos/{prestamoId} {
       // Lectura para usuarios autenticados

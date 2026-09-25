@@ -12,15 +12,11 @@ import {
   ScanBarcode,
   TrendingUp,
   ShieldCheck,
-  AlertCircle,
-  Trash2
+  AlertCircle
 } from 'lucide-react';
-import { Herramienta, Prestamo, Usuario, SolicitudRetiro, SUPERADMIN_EMAIL } from '../../types';
+import { Herramienta, Prestamo, Usuario, SolicitudRetiro } from '../../types';
 import { AdminTab } from './AdminDashboard';
-import { seedSampleToolsIfEmpty, purgeAllTestDataExceptAdmin } from '../../services/toolService';
-import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface AdminSummaryProps {
   herramientas: Herramienta[];
@@ -44,15 +40,6 @@ export const AdminSummary: React.FC<AdminSummaryProps> = ({
   onOpenQuickScanner,
 }) => {
   const { userProfile, currentUser } = useAuth();
-  const { showToast } = useToast();
-  const [seeding, setSeeding] = React.useState(false);
-
-  const isSuperAdmin = 
-    currentUser?.email?.toLowerCase().trim() === SUPERADMIN_EMAIL.toLowerCase().trim() ||
-    Boolean(currentUser?.email?.toLowerCase().includes('pedroangelino92'));
-
-  const [isPurging, setIsPurging] = React.useState(false);
-  const [showPurgeModal, setShowPurgeModal] = React.useState(false);
 
   const totalTools = herramientas.length;
   const availableTools = herramientas.filter((h) => h.estado === 'Disponible').length;
@@ -64,12 +51,6 @@ export const AdminSummary: React.FC<AdminSummaryProps> = ({
   const pendingUsers = usuarios.filter((u) => u.estado === 'pendiente');
   const activeTechnicians = usuarios.filter((u) => u.rol === 'tecnico' && u.estado === 'activo');
 
-  const testUsersCount = usuarios.filter(
-    (u) => 
-      (u.email || '').toLowerCase().trim() !== (currentUser?.email || '').toLowerCase().trim() &&
-      !(u.email || '').toLowerCase().includes('pedroangelino92')
-  ).length;
-
   const now = new Date();
   const overdueLoans = prestamos.filter(
     (p) => p.estado === 'Activo' && p.fechaEstimadaDevolucion && new Date(p.fechaEstimadaDevolucion) < now
@@ -77,109 +58,12 @@ export const AdminSummary: React.FC<AdminSummaryProps> = ({
 
   const recentActiveLoans = prestamos.filter((p) => p.estado === 'Activo').slice(0, 5);
 
-  const handleSeedTools = async () => {
-    setSeeding(true);
-    try {
-      const added = await seedSampleToolsIfEmpty(
-        userProfile?.nombre || currentUser?.email || 'Administrador'
-      );
-      if (added > 0) {
-        showToast('success', 'Inventario Sembrado', `Se agregaron ${added} herramientas de demostración.`);
-      } else {
-        showToast('info', 'Inventario existente', 'Ya tienes herramientas registradas en el sistema.');
-      }
-    } catch (err: any) {
-      showToast('error', 'Error al sembrar datos', err.message || 'Error en la operación.');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  const handleExecutePurge = async () => {
-    if (!isSuperAdmin) {
-      showToast('error', 'Permiso denegado', 'Solo el administrador principal puede realizar esta acción.');
-      return;
-    }
-    setIsPurging(true);
-    try {
-      const adminEmail = currentUser?.email || 'pedroangelino92@gmail.com';
-      const result = await purgeAllTestDataExceptAdmin(adminEmail);
-      showToast(
-        'success',
-        '¡Sistema restablecido a cero!',
-        `Se eliminaron ${result.usuariosEliminados} usuarios, ${result.herramientasEliminadas} herramientas, ${result.prestamosEliminados} préstamos y ${result.solicitudesEliminadas} solicitudes.`
-      );
-      setShowPurgeModal(false);
-    } catch (err: any) {
-      console.error('Error purging data:', err);
-      showToast('error', 'Error en la purga', err.message || 'No se pudieron eliminar todos los registros.');
-    } finally {
-      setIsPurging(false);
-    }
-  };
-
   const usagePercent = totalTools > 0 ? Math.round((loanedTools / totalTools) * 100) : 0;
   const availablePercent = totalTools > 0 ? Math.round((availableTools / totalTools) * 100) : 0;
 
   return (
     <div className="space-y-3.5 sm:space-y-4">
-      {/* SUPERADMIN PURGE BANNER / ACTION CARD */}
-      {isSuperAdmin && (
-        <div className="p-3.5 sm:p-4 bg-gradient-to-r from-zinc-900 via-zinc-900 to-rose-950/20 border border-rose-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400">
-                <Trash2 className="w-4 h-4" />
-              </span>
-              <h3 className="text-sm font-black text-white flex items-center gap-2">
-                Limpieza de Datos de Prueba (Empezar de cero)
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  Solo Superadmin
-                </span>
-              </h3>
-            </div>
-            <p className="text-xs text-zinc-400">
-              Elimina todos los usuarios de prueba (conservando únicamente tu cuenta <strong className="text-zinc-200">{currentUser?.email}</strong>), todas las herramientas y registros de movimientos.
-            </p>
-            <div className="flex items-center gap-2 sm:gap-3 pt-1 text-[11px] text-zinc-400 flex-wrap">
-              <span>Usuarios a borrar: <strong className="text-rose-400 font-bold">{testUsersCount}</strong></span>
-              <span>•</span>
-              <span>Herramientas: <strong className="text-rose-400 font-bold">{totalTools}</strong></span>
-              <span>•</span>
-              <span>Préstamos: <strong className="text-rose-400 font-bold">{prestamos.length}</strong></span>
-              <span>•</span>
-              <span>Solicitudes: <strong className="text-rose-400 font-bold">{solicitudes.length}</strong></span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setShowPurgeModal(true)}
-            disabled={isPurging}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md shadow-rose-950/50 flex items-center justify-center gap-2 shrink-0 active:scale-95 disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>{isPurging ? 'Borrando datos...' : 'Restablecer Todo a Cero'}</span>
-          </button>
-        </div>
-      )}
-
-      {totalTools === 0 && (
-        <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
-          <div>
-            <h3 className="text-sm font-bold text-white">Inventario de herramientas vacío</h3>
-            <p className="text-xs text-zinc-400">Puedes cargar un catálogo demo inicial para comenzar a operar.</p>
-          </div>
-          <button
-            onClick={handleSeedTools}
-            disabled={seeding}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all shadow-md shadow-amber-500/20"
-          >
-            {seeding ? 'Cargando...' : 'Cargar Herramientas Demo'}
-          </button>
-        </div>
-      )}
-
-      {/* 2. SOLICITUDES DE RETIRO PENDIENTES - HIGH PRIORITY ALERT CARD */}
+      {/* 1. SOLICITUDES DE RETIRO PENDIENTES - HIGH PRIORITY ALERT CARD */}
       {pendingSolicitudes.length > 0 && (
         <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-amber-200 space-y-2.5 shadow-lg shadow-amber-500/5 animate-in fade-in duration-150">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -477,19 +361,6 @@ export const AdminSummary: React.FC<AdminSummaryProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal for Full Purge */}
-      <ConfirmationModal
-        isOpen={showPurgeModal}
-        onClose={() => setShowPurgeModal(false)}
-        onConfirm={handleExecutePurge}
-        title="¿Restablecer y borrar datos de prueba?"
-        message={`Esta acción eliminará de forma permanente:\n• ${testUsersCount} usuario(s) de prueba (tu cuenta ${currentUser?.email} se mantendrá intacta con rol Administrador)\n• ${totalTools} herramienta(s)\n• ${prestamos.length} registro(s) de préstamos y devoluciones\n• ${solicitudes.length} solicitud(es) de retiro\n• Notificaciones y transferencias asociadas.\n\n¿Deseas vaciar la base de datos para empezar de cero?`}
-        confirmText="Sí, Eliminar Todo y Empezar de Cero"
-        cancelText="Cancelar"
-        isDestructive={true}
-        isLoading={isPurging}
-      />
     </div>
   );
 };

@@ -49,7 +49,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
       !term ||
       tool.nombre.toLowerCase().includes(term) ||
       tool.codigo.toLowerCase().includes(term) ||
-      tool.marca.toLowerCase().includes(term) ||
+      (tool.marca ? tool.marca.toLowerCase().includes(term) : false) ||
       (tool.modelo && tool.modelo.toLowerCase().includes(term)) ||
       (tool.ubicacion && tool.ubicacion.toLowerCase().includes(term));
 

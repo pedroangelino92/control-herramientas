@@ -18,23 +18,35 @@ export interface Usuario {
 
 export type EstadoHerramienta = 'Disponible' | 'Prestada' | 'En Mantenimiento' | 'Fuera de servicio';
 
-export type CategoriaHerramienta =
-  | 'Herramientas Eléctricas'
-  | 'Herramientas Manuales'
-  | 'Medición y Diagnóstico'
-  | 'Neumáticas e Hidráulicas'
-  | 'Corte y Desbaste'
-  | 'Soldadura'
-  | 'Seguridad y EPP'
-  | 'Equipos de Elevación'
-  | 'Otros';
+export interface CategoriaItem {
+  id?: string;
+  nombre: string;
+  descripcion?: string;
+  fechaCreacion?: string;
+  creadoPor?: string;
+}
+
+export const DEFAULT_CATEGORIES: string[] = [
+  'Herramientas Eléctricas',
+  'Herramientas Manuales',
+  'Medición y Diagnóstico',
+  'Neumáticas e Hidráulicas',
+  'Corte y Desbaste',
+  'Soldadura',
+  'Seguridad y EPP',
+  'Equipos de Elevación',
+  'Otros',
+];
+
+export type CategoriaHerramienta = string;
 
 export interface Herramienta {
   id?: string;
-  codigo: string; // SKU o Código de Barras
-  nombre: string;
-  marca: string;
-  modelo: string;
+  codigo: string; // SKU o Código Interno
+  nombre: string; // Descripción / Nombre
+  descripcion?: string;
+  marca?: string;
+  modelo?: string;
   categoria: CategoriaHerramienta;
   estado: EstadoHerramienta;
   ubicacion: string; // Estante, Gabinete, Taller central, etc.
@@ -110,7 +122,7 @@ export interface HerramientaSolicitada {
   herramientaId: string;
   codigo: string;
   nombre: string;
-  marca: string;
+  marca?: string;
   modelo?: string;
   categoria: string;
   ubicacion?: string;
@@ -151,7 +163,7 @@ export interface TransferenciaCampo {
   herramientaId: string;
   herramientaCodigo: string;
   herramientaNombre: string;
-  herramientaMarca: string;
+  herramientaMarca?: string;
   prestamoOrigenId?: string;
   tecnicoEmisorUid: string;
   tecnicoEmisorNombre: string;

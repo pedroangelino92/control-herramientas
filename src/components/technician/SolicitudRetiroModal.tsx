@@ -149,7 +149,7 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
         !term ||
         tool.nombre.toLowerCase().includes(term) ||
         tool.codigo.toLowerCase().includes(term) ||
-        tool.marca.toLowerCase().includes(term) ||
+        (tool.marca ? tool.marca.toLowerCase().includes(term) : false) ||
         (tool.modelo && tool.modelo.toLowerCase().includes(term));
       const matchesCategory = selectedCategory === 'all' || tool.categoria === selectedCategory;
       return matchesSearch && matchesCategory;
@@ -248,8 +248,8 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
           herramientaId: tool.id!,
           codigo: tool.codigo,
           nombre: tool.nombre,
-          marca: tool.marca,
-          modelo: tool.modelo,
+          marca: tool.marca || '',
+          modelo: tool.modelo || '',
           categoria: tool.categoria,
           ubicacion: tool.ubicacion,
           fotoUrl: tool.fotoUrl,

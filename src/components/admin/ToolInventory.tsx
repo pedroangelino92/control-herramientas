@@ -17,16 +17,19 @@ import {
   Ban,
   Layers,
   LayoutGrid,
-  List
+  List,
+  Tags
 } from 'lucide-react';
-import { Herramienta, EstadoHerramienta, CategoriaHerramienta, SUPERADMIN_EMAIL } from '../../types';
+import { Herramienta, EstadoHerramienta, CategoriaHerramienta, CategoriaItem, SUPERADMIN_EMAIL } from '../../types';
 import { deleteHerramienta } from '../../services/toolService';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import { CategoryManagementModal } from './CategoryManagementModal';
 
 interface ToolInventoryProps {
   herramientas: Herramienta[];
+  categorias?: CategoriaItem[];
   onOpenNewToolModal: () => void;
   onEditTool: (tool: Herramienta) => void;
   onViewBarcode: (tool: Herramienta) => void;
@@ -36,6 +39,7 @@ interface ToolInventoryProps {
 
 export const ToolInventory: React.FC<ToolInventoryProps> = ({
   herramientas,
+  categorias = [],
   onOpenNewToolModal,
   onEditTool,
   onViewBarcode,
@@ -54,16 +58,17 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
   // Delete modal state
   const [toolToDelete, setToolToDelete] = useState<Herramienta | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Filter tools
   const filteredTools = herramientas.filter((tool) => {
     const term = searchTerm.toLowerCase().trim();
     const matchesSearch =
       !term ||
-      tool.nombre.toLowerCase().includes(term) ||
-      tool.codigo.toLowerCase().includes(term) ||
-      tool.marca.toLowerCase().includes(term) ||
-      tool.modelo.toLowerCase().includes(term) ||
+      (tool.nombre && tool.nombre.toLowerCase().includes(term)) ||
+      (tool.codigo && tool.codigo.toLowerCase().includes(term)) ||
+      (tool.marca && tool.marca.toLowerCase().includes(term)) ||
+      (tool.modelo && tool.modelo.toLowerCase().includes(term)) ||
       (tool.ubicacion && tool.ubicacion.toLowerCase().includes(term));
 
     const matchesCategory = selectedCategory === 'all' || tool.categoria === selectedCategory;
@@ -260,10 +265,12 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
                     {tool.nombre}
                   </h3>
 
-                  <p className="text-xs text-zinc-400 mt-1">
-                    <span className="font-semibold text-zinc-300">{tool.marca}</span>
-                    {tool.modelo && ` • Mod: ${tool.modelo}`}
-                  </p>
+                  {(tool.marca || tool.modelo) ? (
+                    <p className="text-xs text-zinc-400 mt-1">
+                      {tool.marca && <span className="font-semibold text-zinc-300">{tool.marca}</span>}
+                      {tool.modelo && ` • Mod: ${tool.modelo}`}
+                    </p>
+                  ) : null}
 
                   <div className="mt-3 space-y-1.5 text-xs text-zinc-400 border-t border-zinc-800/80 pt-3">
                     <div className="flex items-center gap-1.5 truncate">
@@ -370,7 +377,11 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-white">{tool.nombre}</div>
-                      <div className="text-[11px] text-zinc-400">{tool.marca} {tool.modelo}</div>
+                      {(tool.marca || tool.modelo) ? (
+                        <div className="text-[11px] text-zinc-400">
+                          {tool.marca} {tool.modelo}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-zinc-400">{tool.categoria}</td>
                     <td className="px-4 py-3">
