@@ -1018,3 +1018,100 @@ export const seedSampleToolsIfEmpty = async (creadoPorNombre: string): Promise<n
     handleFirestoreError(error, OperationType.WRITE, 'herramientas');
   }
 };
+
+export interface PurgeResult {
+  usuariosEliminados: number;
+  herramientasEliminadas: number;
+  prestamosEliminados: number;
+  solicitudesEliminadas: number;
+  transferenciasEliminadas: number;
+  notificacionesEliminadas: number;
+}
+
+export const purgeAllTestDataExceptAdmin = async (
+  currentAdminEmail: string
+): Promise<PurgeResult> => {
+  const result: PurgeResult = {
+    usuariosEliminados: 0,
+    herramientasEliminadas: 0,
+    prestamosEliminados: 0,
+    solicitudesEliminadas: 0,
+    transferenciasEliminadas: 0,
+    notificacionesEliminadas: 0,
+  };
+
+  const normalizedAdmin = currentAdminEmail.toLowerCase().trim();
+
+  // 1. Usuarios (except Pedro Angelino)
+  try {
+    const usersSnap = await getDocs(collection(db, 'usuarios'));
+    for (const docSnap of usersSnap.docs) {
+      const data = docSnap.data();
+      const userEmail = (data.email || '').toLowerCase().trim();
+      if (userEmail === normalizedAdmin || userEmail.includes('pedroangelino92')) {
+        continue;
+      }
+      await deleteDoc(doc(db, 'usuarios', docSnap.id));
+      result.usuariosEliminados++;
+    }
+  } catch (err) {
+    console.error('Error purging usuarios:', err);
+  }
+
+  // 2. Herramientas (all)
+  try {
+    const toolsSnap = await getDocs(collection(db, 'herramientas'));
+    for (const docSnap of toolsSnap.docs) {
+      await deleteDoc(doc(db, 'herramientas', docSnap.id));
+      result.herramientasEliminadas++;
+    }
+  } catch (err) {
+    console.error('Error purging herramientas:', err);
+  }
+
+  // 3. Prestamos (all)
+  try {
+    const loansSnap = await getDocs(collection(db, 'prestamos'));
+    for (const docSnap of loansSnap.docs) {
+      await deleteDoc(doc(db, 'prestamos', docSnap.id));
+      result.prestamosEliminados++;
+    }
+  } catch (err) {
+    console.error('Error purging prestamos:', err);
+  }
+
+  // 4. Solicitudes de retiro (all)
+  try {
+    const solSnap = await getDocs(collection(db, 'solicitudes_retiro'));
+    for (const docSnap of solSnap.docs) {
+      await deleteDoc(doc(db, 'solicitudes_retiro', docSnap.id));
+      result.solicitudesEliminadas++;
+    }
+  } catch (err) {
+    console.error('Error purging solicitudes_retiro:', err);
+  }
+
+  // 5. Transferencias en campo (all)
+  try {
+    const transSnap = await getDocs(collection(db, 'transferencias_campo'));
+    for (const docSnap of transSnap.docs) {
+      await deleteDoc(doc(db, 'transferencias_campo', docSnap.id));
+      result.transferenciasEliminadas++;
+    }
+  } catch (err) {
+    console.error('Error purging transferencias_campo:', err);
+  }
+
+  // 6. Notificaciones (all)
+  try {
+    const notifSnap = await getDocs(collection(db, 'notificaciones'));
+    for (const docSnap of notifSnap.docs) {
+      await deleteDoc(doc(db, 'notificaciones', docSnap.id));
+      result.notificacionesEliminadas++;
+    }
+  } catch (err) {
+    console.error('Error purging notificaciones:', err);
+  }
+
+  return result;
+};
