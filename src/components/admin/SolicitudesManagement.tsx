@@ -47,21 +47,69 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
   const [solicitudToAuthorize, setSolicitudToAuthorize] = useState<SolicitudRetiro | null>(null);
   const [observacionesEntrega, setObservacionesEntrega] = useState('');
   const [condicionEntrega, setCondicionEntrega] = useState<CondicionHerramienta>('Bueno');
+  const [perToolConditions, setPerToolConditions] = useState<
+    Record<string, { condicion: CondicionHerramienta; observaciones: string }>
+  >({});
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [adminGps, setAdminGps] = useState<GeoLocationPoint | null>(null);
   const [loadingAdminGps, setLoadingAdminGps] = useState(false);
 
-  // Capture GPS whenever authorization modal opens
+  // Initialize tool conditions and capture GPS whenever authorization modal opens
   useEffect(() => {
     if (solicitudToAuthorize) {
+      const initialMap: Record<string, { condicion: CondicionHerramienta; observaciones: string }> = {};
+      solicitudToAuthorize.herramientas.forEach((h) => {
+        initialMap[h.herramientaId] = {
+          condicion: (h.estadoRetiro as CondicionHerramienta) || 'Bueno',
+          observaciones: h.observacionesRetiro || '',
+        };
+      });
+      setPerToolConditions(initialMap);
+      setCondicionEntrega('Bueno');
+      setObservacionesEntrega('');
       setLoadingAdminGps(true);
       captureCurrentLocation()
         .then((loc) => setAdminGps(loc))
         .finally(() => setLoadingAdminGps(false));
     } else {
       setAdminGps(null);
+      setPerToolConditions({});
     }
   }, [solicitudToAuthorize]);
+
+  const handleApplyConditionToAll = (newCond: CondicionHerramienta) => {
+    setCondicionEntrega(newCond);
+    setPerToolConditions((prev) => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach((id) => {
+        updated[id] = {
+          ...updated[id],
+          condicion: newCond,
+        };
+      });
+      return updated;
+    });
+  };
+
+  const handleUpdateToolCondition = (toolId: string, cond: CondicionHerramienta) => {
+    setPerToolConditions((prev) => ({
+      ...prev,
+      [toolId]: {
+        ...(prev[toolId] || { observaciones: '' }),
+        condicion: cond,
+      },
+    }));
+  };
+
+  const handleUpdateToolObs = (toolId: string, obs: string) => {
+    setPerToolConditions((prev) => ({
+      ...prev,
+      [toolId]: {
+        ...(prev[toolId] || { condicion: 'Bueno' }),
+        observaciones: obs,
+      },
+    }));
+  };
 
   // Rejection Modal state
   const [solicitudToReject, setSolicitudToReject] = useState<SolicitudRetiro | null>(null);
@@ -121,7 +169,8 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
         adminNombre,
         observacionesEntrega.trim(),
         condicionEntrega,
-        adminGeo
+        adminGeo,
+        perToolConditions
       );
 
       showToast(
@@ -453,88 +502,209 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
         </div>
       )}
 
-      {/* Authorization Modal (Ultra-compact) */}
+      {/* Authorization Modal (Full per-tool inspection & state editing) */}
       {solicitudToAuthorize && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-4 sm:p-5 space-y-3.5">
-            <div className="flex items-start justify-between gap-2 border-b border-zinc-800 pb-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden p-4 sm:p-6 space-y-4 my-6">
+            <div className="flex items-start justify-between gap-2 border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-xs sm:text-sm font-black text-white truncate">
+                  <h3 className="text-sm sm:text-base font-black text-white truncate">
                     Autorizar Entrega de Equipos
                   </h3>
-                  <p className="text-[10px] text-zinc-400 truncate">
-                    Solicitud {solicitudToAuthorize.nroSolicitud} para {solicitudToAuthorize.tecnicoNombre}
+                  <p className="text-xs text-zinc-400 truncate">
+                    Solicitud <strong className="text-zinc-200">{solicitudToAuthorize.nroSolicitud}</strong> • Técnico: <strong className="text-amber-400">{solicitudToAuthorize.tecnicoNombre}</strong>
                   </p>
                 </div>
               </div>
 
               <button
                 onClick={() => setSolicitudToAuthorize(null)}
-                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+                className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1">
-              <div className="flex items-center justify-between text-zinc-400 text-[11px]">
-                <span>Equipos a entregar:</span>
-                <strong className="text-amber-400 font-bold">{solicitudToAuthorize.cantidadTotal} unidades</strong>
+            {/* Quick summary & destination info */}
+            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1.5">
+              <div className="flex items-center justify-between text-zinc-300">
+                <span>Total de herramientas en esta entrega:</span>
+                <strong className="text-amber-400 font-bold">{solicitudToAuthorize.cantidadTotal} unidad(es)</strong>
               </div>
               {solicitudToAuthorize.motivoUso && (
-                <div className="text-[10px] text-zinc-400 truncate">
-                  <span className="text-zinc-500 font-bold">Destino:</span> "{solicitudToAuthorize.motivoUso}"
+                <div className="text-[11px] text-zinc-400 flex items-start gap-1.5 pt-1 border-t border-zinc-800/80">
+                  <span className="text-zinc-500 font-bold shrink-0">Destino / Uso:</span>
+                  <span className="text-zinc-300 italic">"{solicitudToAuthorize.motivoUso}"</span>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2.5">
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">
-                  Condición de entrega de los equipos *
-                </label>
+            {/* Bulk condition action bar */}
+            <div className="p-3 bg-zinc-950/70 border border-zinc-800/90 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="font-semibold text-zinc-200">Condición general / Rápida:</span>
+              </div>
+              <div className="flex items-center gap-2">
                 <select
                   value={condicionEntrega}
-                  onChange={(e) => setCondicionEntrega(e.target.value as CondicionHerramienta)}
-                  className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded-xl text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  onChange={(e) => {
+                    const newCond = e.target.value as CondicionHerramienta;
+                    setCondicionEntrega(newCond);
+                  }}
+                  className="px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
                 >
                   <option value="Excelente">Excelente (Como nueva)</option>
                   <option value="Bueno">Bueno (Operativa al 100%)</option>
-                  <option value="Desgaste normal">Desgaste normal</option>
+                  <option value="Desgaste normal">Desgaste normal (Con marcas de uso)</option>
+                  <option value="Falta mantenimiento">Falta mantenimiento (Revisión)</option>
+                  <option value="Dañada / Requiere servicio">Dañada / Requiere servicio</option>
                 </select>
+                <button
+                  type="button"
+                  onClick={() => handleApplyConditionToAll(condicionEntrega)}
+                  className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-bold transition-all border border-zinc-700 shrink-0"
+                  title="Asigna este estado a todas las herramientas de la lista"
+                >
+                  Aplicar a todas
+                </button>
+              </div>
+            </div>
+
+            {/* Individual Tool Inspection and Condition Editor */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
+                <span>Revisión individual del estado de cada herramienta:</span>
+                <span className="text-[11px] text-zinc-500 font-normal">
+                  (Cada equipo puede tener su propio estado y notas)
+                </span>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">
-                  Observaciones de Entrega (Opcional)
-                </label>
-                <input
-                  type="text"
-                  value={observacionesEntrega}
-                  onChange={(e) => setObservacionesEntrega(e.target.value)}
-                  placeholder="Ej: Con maletín y batería cargada"
-                  className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
+              <div className="max-h-[38vh] sm:max-h-[44vh] overflow-y-auto space-y-2.5 pr-1 divide-y divide-zinc-800/40">
+                {solicitudToAuthorize.herramientas.map((item, index) => {
+                  const currentToolState = perToolConditions[item.herramientaId] || {
+                    condicion: (item.estadoRetiro as CondicionHerramienta) || 'Bueno',
+                    observaciones: item.observacionesRetiro || '',
+                  };
 
-              {/* Mandatory GPS Notice for Admin */}
-              <GpsRequirementNotice
-                gps={adminGps}
-                loading={loadingAdminGps}
-                onGpsAcquired={setAdminGps}
-                actionName="autorizar y entregar las herramientas"
+                  return (
+                    <div 
+                      key={item.herramientaId || index}
+                      className="pt-2.5 first:pt-0 bg-zinc-950/80 border border-zinc-800/90 rounded-xl p-3 space-y-2.5 hover:border-zinc-700/80 transition-all"
+                    >
+                      {/* Tool header row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-700/80 text-amber-400 flex items-center justify-center shrink-0">
+                            <Wrench className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate">
+                              {item.nombre}
+                            </h4>
+                            <p className="text-[10px] text-zinc-400 truncate">
+                              {item.marca} {item.modelo ? `• ${item.modelo}` : ''} • {item.categoria}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-amber-400 font-bold shrink-0">
+                          {item.codigo}
+                        </span>
+                      </div>
+
+                      {/* Technician request notes (if any) */}
+                      {item.observacionesRetiro && (
+                        <div className="text-[10px] text-zinc-400 bg-zinc-900/90 px-2 py-1 rounded border border-zinc-800 flex items-start gap-1">
+                          <span className="text-zinc-500 font-semibold shrink-0">Nota técnico:</span>
+                          <span className="text-zinc-300 italic">{item.observacionesRetiro}</span>
+                        </div>
+                      )}
+
+                      {/* Individual State & Note inputs */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-400 mb-1">
+                            Estado de esta herramienta *
+                          </label>
+                          <select
+                            value={currentToolState.condicion}
+                            onChange={(e) =>
+                              handleUpdateToolCondition(
+                                item.herramientaId,
+                                e.target.value as CondicionHerramienta
+                              )
+                            }
+                            className={`w-full px-2.5 py-1.5 bg-zinc-900 border rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors ${
+                              currentToolState.condicion === 'Excelente'
+                                ? 'border-emerald-500/50 text-emerald-300'
+                                : currentToolState.condicion === 'Bueno'
+                                ? 'border-zinc-700 text-zinc-100'
+                                : currentToolState.condicion === 'Desgaste normal'
+                                ? 'border-amber-500/50 text-amber-300'
+                                : 'border-rose-500/50 text-rose-300'
+                            }`}
+                          >
+                            <option value="Excelente">Excelente (Como nueva)</option>
+                            <option value="Bueno">Bueno (Operativa al 100%)</option>
+                            <option value="Desgaste normal">Desgaste normal (Marcas de uso)</option>
+                            <option value="Falta mantenimiento">Falta mantenimiento (Revisión)</option>
+                            <option value="Dañada / Requiere servicio">Dañada / Requiere servicio</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-400 mb-1">
+                            Observación / Detalle de este equipo
+                          </label>
+                          <input
+                            type="text"
+                            value={currentToolState.observaciones}
+                            onChange={(e) =>
+                              handleUpdateToolObs(item.herramientaId, e.target.value)
+                            }
+                            placeholder="Ej: Carcasa rayada, con batería extra..."
+                            className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* General delivery note (optional) */}
+            <div>
+              <label className="block text-[11px] font-bold text-zinc-300 mb-1">
+                Observaciones generales de la entrega (Opcional)
+              </label>
+              <input
+                type="text"
+                value={observacionesEntrega}
+                onChange={(e) => setObservacionesEntrega(e.target.value)}
+                placeholder="Ej: Entregado en mostrador principal con candado..."
+                className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+            {/* Mandatory GPS Notice for Admin */}
+            <GpsRequirementNotice
+              gps={adminGps}
+              loading={loadingAdminGps}
+              onGpsAcquired={setAdminGps}
+              actionName="autorizar y entregar las herramientas"
+            />
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800">
               <button
                 type="button"
                 onClick={() => setSolicitudToAuthorize(null)}
-                className="px-3 py-1.5 text-xs font-semibold text-zinc-400 hover:text-white"
+                className="px-3.5 py-2 text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
               >
                 Cancelar
               </button>
@@ -551,7 +721,7 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
                 ) : (
                   <>
                     <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Confirmar y Entregar</span>
+                    <span>Confirmar y Entregar ({solicitudToAuthorize.cantidadTotal})</span>
                   </>
                 )}
               </button>

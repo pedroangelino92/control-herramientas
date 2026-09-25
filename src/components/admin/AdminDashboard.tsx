@@ -353,19 +353,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-0.5" />
             )}
           </button>
-
-          {/* 7. Retirar / Modo Técnico */}
-          {onSwitchToTechnician && (
-            <button
-              type="button"
-              onClick={onSwitchToTechnician}
-              className="flex-1 min-w-[50px] flex flex-col items-center justify-center py-1 rounded-xl transition-all text-amber-400 hover:text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30"
-              title="Retirar herramientas y gestionar traspasos en campo como técnico"
-            >
-              <Wrench className="w-4 h-4 text-amber-400" />
-              <span className="text-[10px] mt-0.5 tracking-tight">Retirar</span>
-            </button>
-          )}
         </div>
       </nav>
     </div>

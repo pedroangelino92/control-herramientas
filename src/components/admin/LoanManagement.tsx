@@ -12,7 +12,8 @@ import {
   FileText, 
   Printer, 
   Download,
-  Tag
+  Tag,
+  UserPlus
 } from 'lucide-react';
 import { Prestamo, Herramienta } from '../../types';
 
@@ -129,10 +130,11 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
 
           <button
             onClick={onOpenNewLoanModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0"
+            className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0"
+            title="Prestar herramienta a una persona interna de la empresa que no pertenece a nuestro departamento"
           >
-            <Plus className="w-4 h-4" />
-            <span>Registrar Salida</span>
+            <UserPlus className="w-4 h-4" />
+            <span>Prestar a usuario externo</span>
           </button>
         </div>
       </div>
@@ -202,8 +204,8 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
             onClick={onOpenNewLoanModal}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all"
           >
-            <Plus className="w-3.5 h-3.5" />
-            Registrar Salida
+            <UserPlus className="w-3.5 h-3.5" />
+            Prestar a usuario externo
           </button>
         </div>
       ) : (

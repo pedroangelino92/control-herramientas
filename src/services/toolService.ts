@@ -180,6 +180,70 @@ export const registerPrestamo = async (input: NewPrestamoInput): Promise<string>
   }
 };
 
+export interface ToolLoanItem {
+  herramienta: Herramienta;
+  condicionEntrega: CondicionHerramienta;
+  observacionesEntrega?: string;
+}
+
+export interface NewMultiplePrestamoInput {
+  items: ToolLoanItem[];
+  tecnico: Usuario;
+  adminUid: string;
+  adminNombre: string;
+  fechaEstimadaDevolucion: string;
+  geoEntrega?: GeoLocationPoint;
+}
+
+export const registerMultiplePrestamos = async (input: NewMultiplePrestamoInput): Promise<string[]> => {
+  const batch = writeBatch(db);
+  const now = new Date().toISOString();
+  const ids: string[] = [];
+
+  for (const item of input.items) {
+    const prestamosCol = collection(db, 'prestamos');
+    const newPrestamoRef = doc(prestamosCol);
+    const herramientaRef = doc(db, 'herramientas', item.herramienta.id!);
+
+    const prestamoData: Omit<Prestamo, 'id'> = {
+      herramientaId: item.herramienta.id!,
+      herramientaCodigo: item.herramienta.codigo,
+      herramientaNombre: item.herramienta.nombre,
+      tecnicoUid: input.tecnico.uid,
+      tecnicoNombre: input.tecnico.nombre,
+      tecnicoEmail: input.tecnico.email,
+      adminUid: input.adminUid,
+      adminNombre: input.adminNombre,
+      fechaPrestamo: now,
+      fechaEstimadaDevolucion: input.fechaEstimadaDevolucion,
+      estado: 'Activo',
+      condicionEntrega: item.condicionEntrega,
+      observacionesEntrega: item.observacionesEntrega || '',
+      ...(input.geoEntrega ? { geoEntrega: input.geoEntrega } : {}),
+    };
+
+    const toolUpdate: Partial<Herramienta> = {
+      estado: 'Prestada',
+      tecnicoAsignadoUid: input.tecnico.uid,
+      tecnicoAsignadoNombre: input.tecnico.nombre,
+      prestamoActualId: newPrestamoRef.id,
+      ubicacion: `En posesión de ${input.tecnico.nombre}`,
+    };
+
+    batch.set(newPrestamoRef, prestamoData);
+    batch.update(herramientaRef, toolUpdate);
+    ids.push(newPrestamoRef.id);
+  }
+
+  try {
+    await batch.commit();
+    return ids;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'prestamos');
+    return [];
+  }
+};
+
 export interface ReturnPrestamoInput {
   prestamo: Prestamo;
   condicionDevolucion: CondicionHerramienta;
@@ -363,7 +427,8 @@ export const autorizarSolicitudRetiro = async (
   adminNombre: string,
   observacionesEntrega?: string,
   condicionEntrega: CondicionHerramienta = 'Bueno',
-  adminGeo?: GeoLocationPoint | null
+  adminGeo?: GeoLocationPoint | null,
+  toolSpecificConditions?: Record<string, { condicion: CondicionHerramienta; observaciones?: string }>
 ): Promise<void> => {
   const batch = writeBatch(db);
   const now = new Date().toISOString();
@@ -385,31 +450,44 @@ export const autorizarSolicitudRetiro = async (
     aprobadoEnPresencia = distanciaMetros <= PRESENCE_DISTANCE_THRESHOLD_METERS;
   }
 
-  // Update solicitud status with GPS and presence check
+  // Update herramientas array in solicitud with individual approved states
+  const updatedHerramientas = solicitud.herramientas.map((item) => {
+    const specific = toolSpecificConditions?.[item.herramientaId];
+    return {
+      ...item,
+      estadoRetiro: specific?.condicion || item.estadoRetiro || condicionEntrega || 'Bueno',
+      observacionesRetiro: specific?.observaciones !== undefined 
+        ? specific.observaciones 
+        : (item.observacionesRetiro || ''),
+    };
+  });
+
+  // Update solicitud status with GPS, updated herramientas with per-tool status, and presence check
   batch.update(solicitudRef, {
     estado: 'Aprobada',
     fechaRespuesta: now,
     adminRespuestaUid: adminUid,
     adminRespuestaNombre: adminNombre,
     observacionesEntrega: observacionesEntrega || '',
+    herramientas: updatedHerramientas,
     ...(geoAprobacion ? { geoAprobacion } : {}),
     ...(distanciaMetros !== undefined ? { distanciaAprobacionMetros: distanciaMetros } : {}),
     ...(aprobadoEnPresencia !== undefined ? { aprobadoEnPresencia } : {}),
   });
 
   // Create individual loans for each tool and mark tool as Prestada
-  for (const item of solicitud.herramientas) {
+  for (const item of updatedHerramientas) {
     const prestamosCol = collection(db, 'prestamos');
     const newPrestamoRef = doc(prestamosCol);
     const herramientaRef = doc(db, 'herramientas', item.herramientaId);
 
-    const itemCondicion = (item.estadoRetiro as CondicionHerramienta) || condicionEntrega || 'Bueno';
+    const itemCondicion = (item.estadoRetiro as CondicionHerramienta) || 'Bueno';
     let combinedObs = '';
     if (item.observacionesRetiro) {
-      combinedObs += `Estado al retirar (${itemCondicion}): ${item.observacionesRetiro}. `;
+      combinedObs += `[Estado: ${itemCondicion}] ${item.observacionesRetiro}. `;
     }
     if (observacionesEntrega) {
-      combinedObs += `Admin: ${observacionesEntrega} `;
+      combinedObs += `[Entrega: ${observacionesEntrega}] `;
     }
     if (!combinedObs) {
       combinedObs = `Solicitud ${solicitud.nroSolicitud}${solicitud.motivoUso ? ` - Motivo: ${solicitud.motivoUso}` : ''}`;
