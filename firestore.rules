@@ -103,5 +103,12 @@ service cloud.firestore {
       // Eliminar: Administradores
       allow delete: if isAdmin();
     }
+
+    // Colección de Notificaciones del Sistema
+    match /notificaciones/{notificacionId} {
+      // Lectura, creación y actualización de estado de lectura para usuarios autenticados
+      allow read, create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
   }
 }

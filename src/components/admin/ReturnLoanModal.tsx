@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, AlertTriangle, Wrench, RotateCcw } from 'lucide-react';
-import { Prestamo, CondicionHerramienta, EstadoHerramienta } from '../../types';
+import { Prestamo, CondicionHerramienta, EstadoHerramienta, GeoLocationPoint } from '../../types';
 import { returnHerramientaLoan } from '../../services/toolService';
+import { captureCurrentLocation } from '../../services/geoService';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface ReturnLoanModalProps {
   isOpen: boolean;
@@ -24,6 +26,19 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
   const [condicionDevolucion, setCondicionDevolucion] = useState<CondicionHerramienta>('Bueno');
   const [observaciones, setObservaciones] = useState('');
   const [loading, setLoading] = useState(false);
+  const [adminGps, setAdminGps] = useState<GeoLocationPoint | null>(null);
+  const [loadingGps, setLoadingGps] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingGps(true);
+      captureCurrentLocation()
+        .then((loc) => setAdminGps(loc))
+        .finally(() => setLoadingGps(false));
+    } else {
+      setAdminGps(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen || !prestamo) return null;
 
@@ -31,6 +46,20 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let finalGps = adminGps;
+    if (!finalGps) {
+      setLoadingGps(true);
+      finalGps = await captureCurrentLocation();
+      setLoadingGps(false);
+      if (finalGps) setAdminGps(finalGps);
+    }
+
+    if (!finalGps) {
+      showToast('error', 'GPS Obligatorio', 'Debes tener la ubicación encendida para registrar la devolución de la herramienta.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -43,6 +72,7 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
         recibidoPorNombre: userProfile?.nombre || currentUser?.email || 'Administrador',
         recibidoPorUid: currentUser?.uid || 'admin',
         destinoEstadoHerramienta: targetToolStatus,
+        geoDevolucion: finalGps,
       });
 
       showToast(
@@ -146,6 +176,14 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
             />
           </div>
 
+          {/* Mandatory GPS Notice for tool return */}
+          <GpsRequirementNotice
+            gps={adminGps}
+            loading={loadingGps}
+            onGpsAcquired={setAdminGps}
+            actionName="registrar la devolución y certificar el ingreso al almacén"
+          />
+
           <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
             <button
               type="button"
@@ -157,10 +195,10 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="px-5 py-2 text-sm font-bold text-black bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+              disabled={loading || !adminGps || loadingGps}
+              className="px-5 py-2 text-sm font-bold text-black bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {loading ? 'Guardando...' : 'Confirmar Devolución'}
+              {loading ? 'Guardando...' : !adminGps ? 'Activar GPS para Devolver' : 'Confirmar Devolución'}
               <CheckCircle2 className="w-4 h-4" />
             </button>
           </div>

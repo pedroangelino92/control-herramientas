@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, Wrench, UserCheck, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
-import { Herramienta, Usuario, CondicionHerramienta } from '../../types';
+import { X, ArrowRight, Wrench, UserCheck, Calendar, CheckCircle2, AlertCircle, MapPin } from 'lucide-react';
+import { Herramienta, Usuario, CondicionHerramienta, GeoLocationPoint } from '../../types';
 import { registerPrestamo } from '../../services/toolService';
+import { captureCurrentLocation } from '../../services/geoService';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface NewLoanModalProps {
   isOpen: boolean;
@@ -31,6 +33,20 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   const [condicionEntrega, setCondicionEntrega] = useState<CondicionHerramienta>('Excelente');
   const [observaciones, setObservaciones] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [adminGps, setAdminGps] = useState<GeoLocationPoint | null>(null);
+  const [loadingGps, setLoadingGps] = useState(false);
+
+  // Capture GPS on modal open
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingGps(true);
+      captureCurrentLocation()
+        .then((loc) => setAdminGps(loc))
+        .finally(() => setLoadingGps(false));
+    } else {
+      setAdminGps(null);
+    }
+  }, [isOpen]);
 
   // Filter available tools
   const availableTools = herramientas.filter(
@@ -76,6 +92,19 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
       return;
     }
 
+    let finalGps = adminGps;
+    if (!finalGps) {
+      setLoadingGps(true);
+      finalGps = await captureCurrentLocation();
+      setLoadingGps(false);
+      if (finalGps) setAdminGps(finalGps);
+    }
+
+    if (!finalGps) {
+      showToast('error', 'GPS Obligatorio', 'Debes tener la ubicación encendida para registrar la salida de herramientas.');
+      return;
+    }
+
     setLoading(true);
     try {
       await registerPrestamo({
@@ -86,6 +115,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
         fechaEstimadaDevolucion: new Date(fechaEstimada).toISOString(),
         condicionEntrega,
         observacionesEntrega: observaciones.trim(),
+        geoEntrega: finalGps,
       });
 
       showToast(
@@ -259,6 +289,14 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
               </div>
             )}
 
+            {/* Mandatory GPS notice for loan */}
+            <GpsRequirementNotice
+              gps={adminGps}
+              loading={loadingGps}
+              onGpsAcquired={setAdminGps}
+              actionName="registrar la entrega y préstamo de la herramienta"
+            />
+
             <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
               <button
                 type="button"
@@ -270,10 +308,10 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={loading}
-                className="px-5 py-2 text-sm font-bold text-black bg-amber-500 hover:bg-amber-400 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                disabled={loading || !adminGps || loadingGps}
+                className="px-5 py-2 text-sm font-bold text-black bg-amber-500 hover:bg-amber-400 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {loading ? 'Procesando...' : 'Confirmar Préstamo'}
+                {loading ? 'Procesando...' : !adminGps ? 'Activar GPS para Confirmar' : 'Confirmar Préstamo'}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

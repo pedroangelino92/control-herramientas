@@ -17,6 +17,7 @@ import { createTransferenciaCampo } from '../../services/toolService';
 import { captureCurrentLocation, getGoogleMapsUrl } from '../../services/geoService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface TransferInFieldModalProps {
   isOpen: boolean;
@@ -113,15 +114,25 @@ export const TransferInFieldModal: React.FC<TransferInFieldModalProps> = ({
     }
 
     setErrorMsg(null);
+
+    // Re-capture fresh GPS if possible
+    let finalGps = currentGps;
+    if (!finalGps) {
+      setLoadingGps(true);
+      finalGps = await captureCurrentLocation();
+      setLoadingGps(false);
+      if (finalGps) setCurrentGps(finalGps);
+    }
+
+    if (!finalGps) {
+      setErrorMsg('Ubicación GPS obligatoria: Debes activar la ubicación del teléfono para poder iniciar el traspaso en campo.');
+      showToast('error', 'GPS Obligatorio', 'Debes activar la ubicación del teléfono para realizar el traspaso.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Re-capture fresh GPS if possible
-      let finalGps = currentGps;
-      if (!finalGps) {
-        finalGps = await captureCurrentLocation();
-      }
-
       const emisorNombre = userProfile?.nombre || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Técnico';
       const emisorEmail = userProfile?.email || currentUser?.email || '';
 
@@ -306,6 +317,14 @@ export const TransferInFieldModal: React.FC<TransferInFieldModalProps> = ({
             />
           </div>
 
+          {/* Mandatory GPS notice */}
+          <GpsRequirementNotice
+            gps={currentGps}
+            loading={loadingGps}
+            onGpsAcquired={setCurrentGps}
+            actionName="iniciar el traspaso de la herramienta en campo"
+          />
+
           {/* Security Notice */}
           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start gap-2">
             <Sparkles className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
@@ -325,11 +344,11 @@ export const TransferInFieldModal: React.FC<TransferInFieldModalProps> = ({
 
             <button
               type="submit"
-              disabled={isSubmitting || !selectedRecipientUid}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black text-xs font-black transition-all shadow-lg shadow-amber-500/20 flex items-center gap-1.5 disabled:opacity-40"
+              disabled={isSubmitting || !selectedRecipientUid || !currentGps || loadingGps}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black text-xs font-black transition-all shadow-lg shadow-amber-500/20 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Iniciando traspaso...' : 'Iniciar Traspaso en Campo'}</span>
+              <span>{isSubmitting ? 'Iniciando traspaso...' : !currentGps ? 'Activar GPS para Traspasar' : 'Iniciar Traspaso en Campo'}</span>
             </button>
           </div>
         </form>

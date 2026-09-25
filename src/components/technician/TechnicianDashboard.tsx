@@ -32,6 +32,7 @@ interface TechnicianDashboardProps {
   solicitudes: SolicitudRetiro[];
   transferencias?: TransferenciaCampo[];
   usuarios?: Usuario[];
+  onSwitchToAdmin?: () => void;
 }
 
 export type TechnicianTab = 'assigned' | 'catalog' | 'solicitudes' | 'history';
@@ -42,8 +43,9 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
   solicitudes,
   transferencias = [],
   usuarios = [],
+  onSwitchToAdmin,
 }) => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, isAdmin } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TechnicianTab>('assigned');
 
@@ -165,7 +167,7 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-24 md:pb-8">
+    <div className="space-y-4 sm:space-y-6 pb-14 md:pb-4">
       {/* ========================================================================= */}
       {/* 1. INCOMING FIELD TRANSFERS BANNER (ALERT FOR RECIPIENT TECHNICIAN)       */}
       {/* ========================================================================= */}

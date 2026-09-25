@@ -13,6 +13,8 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { TechnicianDashboard } from './components/technician/TechnicianDashboard';
 import { QuickScannerModal } from './components/common/QuickScannerModal';
 import { BarcodeModal } from './components/common/BarcodeModal';
+import { PermissionsPromptModal } from './components/common/PermissionsPromptModal';
+import { NotificationDrawerModal } from './components/common/NotificationDrawerModal';
 import { 
   subscribeToHerramientas, 
   subscribeToPrestamos, 
@@ -20,8 +22,22 @@ import {
   subscribeToSolicitudesRetiro,
   subscribeToTransferenciasCampo
 } from './services/toolService';
-import { Herramienta, Prestamo, Usuario, SolicitudRetiro, TransferenciaCampo } from './types';
-import { Wrench, ShieldAlert, LogOut, Loader2 } from 'lucide-react';
+import { 
+  checkLocationPermission 
+} from './services/geoService';
+import { 
+  checkNotificationPermission, 
+  subscribeToMisNotificaciones 
+} from './services/notificationService';
+import { 
+  Herramienta, 
+  Prestamo, 
+  Usuario, 
+  SolicitudRetiro, 
+  TransferenciaCampo,
+  NotificacionSistema 
+} from './types';
+import { Wrench, ShieldAlert, LogOut, Loader2, ShieldCheck } from 'lucide-react';
 
 const MainContent: React.FC = () => {
   const { 
@@ -38,15 +54,22 @@ const MainContent: React.FC = () => {
   const { showToast } = useToast();
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [adminViewMode, setAdminViewMode] = useState<'admin' | 'technician'>('admin');
   const [herramientas, setHerramientas] = useState<Herramienta[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [solicitudes, setSolicitudes] = useState<SolicitudRetiro[]>([]);
   const [transferencias, setTransferencias] = useState<TransferenciaCampo[]>([]);
+  const [notificaciones, setNotificaciones] = useState<NotificacionSistema[]>([]);
   
   const [isQuickScannerOpen, setIsQuickScannerOpen] = useState(false);
   const [scannedTool, setScannedTool] = useState<Herramienta | null>(null);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+
+  // Phone / PWA permission modals state
+  const [isPermissionsPromptOpen, setIsPermissionsPromptOpen] = useState(false);
+  const [isNotificationsDrawerOpen, setIsNotificationsDrawerOpen] = useState(false);
+  const [needsPermissions, setNeedsPermissions] = useState(false);
 
   // Toggle Dark Mode
   const handleToggleTheme = () => {
@@ -98,12 +121,35 @@ const MainContent: React.FC = () => {
       (err) => console.error('Error fetching usuarios:', err)
     );
 
+    const unsubNotifs = subscribeToMisNotificaciones(
+      currentUser.uid,
+      isAdmin,
+      (items) => setNotificaciones(items),
+      (err) => console.error('Error fetching notificaciones:', err)
+    );
+
+    // Check phone/PWA permissions on mount
+    const checkPermissions = async () => {
+      const loc = await checkLocationPermission();
+      const notif = checkNotificationPermission();
+      const missing = loc !== 'granted' || notif !== 'granted';
+      setNeedsPermissions(missing);
+
+      const hasPrompted = sessionStorage.getItem('pwa_permissions_prompted');
+      if (missing && !hasPrompted) {
+        sessionStorage.setItem('pwa_permissions_prompted', 'true');
+        setTimeout(() => setIsPermissionsPromptOpen(true), 900);
+      }
+    };
+    checkPermissions();
+
     return () => {
       unsubTools();
       unsubLoans();
       unsubSolicitudes();
       unsubTransferencias();
       unsubUsers();
+      unsubNotifs();
     };
   }, [currentUser, isAdmin]);
 
@@ -179,10 +225,48 @@ const MainContent: React.FC = () => {
         onOpenScanner={() => setIsQuickScannerOpen(true)}
         isDarkMode={isDarkMode}
         onToggleTheme={handleToggleTheme}
+        unreadNotificationsCount={notificaciones.filter((n) => !n.leida).length}
+        onOpenNotifications={() => setIsNotificationsDrawerOpen(true)}
+        onOpenPermissionsPrompt={() => setIsPermissionsPromptOpen(true)}
+        needsPermissions={needsPermissions}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
-        {isAdmin ? (
+      {/* Mode Switcher Bar: Almacén vs Retirar (centrado sobre el resumen y debajo de la barra principal) */}
+      {isAdmin && (
+        <div className="w-full bg-zinc-950/85 border-b border-zinc-800/80 backdrop-blur-md sticky top-14 sm:top-16 z-30 py-2 px-3 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto flex items-center justify-center">
+            <div className="inline-flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 shadow-md">
+              <button
+                type="button"
+                onClick={() => setAdminViewMode('admin')}
+                className={`px-5 sm:px-7 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+                  adminViewMode === 'admin'
+                    ? 'bg-amber-500 text-black shadow-md shadow-amber-500/25'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Almacén</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminViewMode('technician')}
+                className={`px-5 sm:px-7 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+                  adminViewMode === 'technician'
+                    ? 'bg-amber-500 text-black shadow-md shadow-amber-500/25'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Wrench className="w-4 h-4" />
+                <span>Retirar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 pt-3 pb-2">
+        {isAdmin && adminViewMode === 'admin' ? (
           <AdminDashboard
             herramientas={herramientas}
             prestamos={prestamos}
@@ -190,6 +274,7 @@ const MainContent: React.FC = () => {
             solicitudes={solicitudes}
             transferencias={transferencias}
             onOpenQuickScanner={() => setIsQuickScannerOpen(true)}
+            onSwitchToTechnician={() => setAdminViewMode('technician')}
           />
         ) : (
           <TechnicianDashboard
@@ -198,15 +283,16 @@ const MainContent: React.FC = () => {
             solicitudes={solicitudes}
             transferencias={transferencias}
             usuarios={usuarios}
+            onSwitchToAdmin={isAdmin ? () => setAdminViewMode('admin') : undefined}
           />
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="w-full pt-5 pb-24 md:pb-5 border-t border-zinc-800 text-center text-xs text-zinc-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>Control de Herramientas • Trazabilidad e Inventario en Tiempo Real</p>
-          <p className="font-mono text-[11px] text-zinc-600">Firebase Firestore & Auth Connected</p>
+      {/* Footer minimal sin exceso de espacio negro */}
+      <footer className="w-full py-2.5 pb-16 md:pb-3 border-t border-zinc-900/80 text-center text-[11px] text-zinc-500">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px]">
+          <p>Control de Herramientas • Trazabilidad e Inventario</p>
+          <p className="font-mono text-[10px] text-zinc-600">Firebase Firestore & Auth Connected</p>
         </div>
       </footer>
 
@@ -226,6 +312,28 @@ const MainContent: React.FC = () => {
           setScannedTool(null);
         }}
         herramienta={scannedTool}
+      />
+
+      {/* Permissions Prompt Modal for Mobile / PWA */}
+      <PermissionsPromptModal
+        isOpen={isPermissionsPromptOpen}
+        onClose={() => setIsPermissionsPromptOpen(false)}
+        onPermissionsUpdated={async () => {
+          const loc = await checkLocationPermission();
+          const notif = checkNotificationPermission();
+          setNeedsPermissions(loc !== 'granted' || notif !== 'granted');
+        }}
+      />
+
+      {/* Notifications Drawer Modal */}
+      <NotificationDrawerModal
+        isOpen={isNotificationsDrawerOpen}
+        onClose={() => setIsNotificationsDrawerOpen(false)}
+        notificaciones={notificaciones}
+        onOpenPermissionsPrompt={() => {
+          setIsNotificationsDrawerOpen(false);
+          setIsPermissionsPromptOpen(true);
+        }}
       />
     </div>
   );

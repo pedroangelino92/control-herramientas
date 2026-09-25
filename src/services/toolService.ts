@@ -32,6 +32,11 @@ import {
   calculateDistanceMeters, 
   PRESENCE_DISTANCE_THRESHOLD_METERS 
 } from './geoService';
+import { 
+  crearNotificacion, 
+  notificarAAdmins, 
+  showDeviceNotification 
+} from './notificationService';
 
 // ==========================================
 // HERRAMIENTAS CRUD & LISTENERS
@@ -130,6 +135,7 @@ export interface NewPrestamoInput {
   fechaEstimadaDevolucion: string;
   condicionEntrega: CondicionHerramienta;
   observacionesEntrega?: string;
+  geoEntrega?: GeoLocationPoint;
 }
 
 export const registerPrestamo = async (input: NewPrestamoInput): Promise<string> => {
@@ -154,6 +160,7 @@ export const registerPrestamo = async (input: NewPrestamoInput): Promise<string>
     estado: 'Activo',
     condicionEntrega: input.condicionEntrega,
     observacionesEntrega: input.observacionesEntrega || '',
+    ...(input.geoEntrega ? { geoEntrega: input.geoEntrega } : {}),
   };
 
   const toolUpdate: Partial<Herramienta> = {
@@ -328,6 +335,22 @@ export const createSolicitudRetiro = async (input: NewSolicitudInput): Promise<s
     };
 
     const docRef = await addDoc(collection(db, 'solicitudes_retiro'), data);
+
+    try {
+      await notificarAAdmins(
+        'Nueva Solicitud de Retiro',
+        `${input.tecnicoNombre} solicitó ${input.herramientas.length} herramienta(s): ${input.herramientas.map((h) => h.nombre).slice(0, 2).join(', ')}${input.herramientas.length > 2 ? '...' : ''}.`,
+        'solicitud',
+        { solicitudId: docRef.id, tecnicoUid: input.tecnicoUid }
+      );
+      showDeviceNotification('Nueva Solicitud de Retiro', {
+        body: `${input.tecnicoNombre} solicitó ${input.herramientas.length} herramienta(s).`,
+        tag: `sol-${docRef.id}`,
+      });
+    } catch (e) {
+      console.warn('Error sending notification on solicitud create:', e);
+    }
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, 'solicitudes_retiro');
@@ -427,6 +450,22 @@ export const autorizarSolicitudRetiro = async (
 
   try {
     await batch.commit();
+
+    try {
+      await crearNotificacion(
+        solicitud.tecnicoUid,
+        '¡Solicitud Aprobada!',
+        `Tu solicitud ${solicitud.nroSolicitud} de ${solicitud.cantidadTotal} herramienta(s) ha sido aprobada por ${adminNombre}.`,
+        'aprobacion',
+        { solicitudId: solicitud.id }
+      );
+      showDeviceNotification('¡Solicitud Aprobada!', {
+        body: `Tu solicitud de ${solicitud.cantidadTotal} herramienta(s) ha sido autorizada.`,
+        tag: `sol-aprobada-${solicitud.id}`,
+      });
+    } catch (e) {
+      console.warn('Error sending approval notification:', e);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `solicitudes_retiro/${solicitud.id}`);
   }
@@ -447,6 +486,24 @@ export const rechazarSolicitudRetiro = async (
       adminRespuestaNombre: adminNombre,
       motivoRechazo: motivoRechazo || 'Rechazado por el Administrador',
     });
+
+    try {
+      const snap = await getDocs(query(collection(db, 'solicitudes_retiro'), where('__name__', '==', solicitudId)));
+      if (!snap.empty) {
+        const solData = snap.docs[0].data();
+        if (solData.tecnicoUid) {
+          await crearNotificacion(
+            solData.tecnicoUid,
+            'Solicitud Rechazada',
+            `Tu solicitud ${solData.nroSolicitud || ''} fue rechazada: ${motivoRechazo}`,
+            'rechazo',
+            { solicitudId }
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Error sending reject notification:', e);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `solicitudes_retiro/${solicitudId}`);
   }
@@ -538,6 +595,23 @@ export const createTransferenciaCampo = async (input: {
     };
 
     const docRef = await addDoc(collection(db, 'transferencias_campo'), data);
+
+    try {
+      await crearNotificacion(
+        input.tecnicoReceptorUid,
+        'Traspaso de Herramienta en Campo',
+        `${input.tecnicoEmisorNombre} te está entregando "${input.herramienta.nombre}". Revisa y confirma la recepción en la app.`,
+        'traspaso',
+        { transferenciaId: docRef.id, herramientaId: input.herramienta.id }
+      );
+      showDeviceNotification('Traspaso en Campo Recibido', {
+        body: `${input.tecnicoEmisorNombre} te está entregando "${input.herramienta.nombre}".`,
+        tag: `trf-${docRef.id}`,
+      });
+    } catch (e) {
+      console.warn('Error sending transfer start notification:', e);
+    }
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, 'transferencias_campo');
@@ -624,6 +698,28 @@ export const confirmarTransferenciaCampo = async (
 
   try {
     await batch.commit();
+
+    try {
+      await crearNotificacion(
+        transferencia.tecnicoEmisorUid,
+        'Traspaso Confirmado',
+        `${transferencia.tecnicoReceptorNombre} ha recibido satisfactoriamente "${transferencia.herramientaNombre}" con validación GPS.`,
+        'traspaso',
+        { transferenciaId: transferencia.id }
+      );
+      await notificarAAdmins(
+        'Traspaso en Campo Realizado',
+        `${transferencia.tecnicoEmisorNombre} traspasó "${transferencia.herramientaNombre}" a ${transferencia.tecnicoReceptorNombre}.`,
+        'traspaso',
+        { transferenciaId: transferencia.id }
+      );
+      showDeviceNotification('Traspaso Confirmado', {
+        body: `${transferencia.tecnicoReceptorNombre} recibió "${transferencia.herramientaNombre}".`,
+        tag: `trf-conf-${transferencia.id}`,
+      });
+    } catch (e) {
+      console.warn('Error sending transfer confirm notification:', e);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `transferencias_campo/${transferencia.id}`);
   }
@@ -640,6 +736,22 @@ export const rechazarTransferenciaCampo = async (
       fechaRespuesta: new Date().toISOString(),
       motivoRechazo: motivoRechazo.trim(),
     });
+
+    try {
+      const snap = await getDocs(query(collection(db, 'transferencias_campo'), where('__name__', '==', transferenciaId)));
+      if (!snap.empty) {
+        const trfData = snap.docs[0].data();
+        if (trfData.tecnicoEmisorUid) {
+          await crearNotificacion(
+            trfData.tecnicoEmisorUid,
+            'Traspaso Rechazado',
+            `${trfData.tecnicoReceptorNombre || 'El técnico'} no aceptó el traspaso de "${trfData.herramientaNombre || 'la herramienta'}": ${motivoRechazo}`,
+            'traspaso',
+            { transferenciaId }
+          );
+        }
+      }
+    } catch (e) {}
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `transferencias_campo/${transferenciaId}`);
   }

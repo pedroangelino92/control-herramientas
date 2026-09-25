@@ -4,24 +4,33 @@ import {
   ShieldCheck, 
   UserCheck, 
   LogOut, 
-  ScanBarcode, 
   Sun, 
-  Moon
+  Moon,
+  Bell,
+  Smartphone
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
-  onOpenScanner: () => void;
+  onOpenScanner?: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
+  onOpenPermissionsPrompt?: () => void;
+  needsPermissions?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenScanner,
   isDarkMode,
   onToggleTheme,
+  unreadNotificationsCount = 0,
+  onOpenNotifications,
+  onOpenPermissionsPrompt,
+  needsPermissions = false,
 }) => {
   const { currentUser, userProfile, isAdmin, logout } = useAuth();
   const { showToast } = useToast();
@@ -70,15 +79,41 @@ export const Header: React.FC<HeaderProps> = ({
           {/* PWA Install Button */}
           <PWAInstallButton />
 
-          {/* Quick Scanner button */}
-          <button
-            onClick={onOpenScanner}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-xs font-semibold text-zinc-200 transition-all shadow-sm active:scale-95"
-            title="Escanear o buscar código de herramienta"
-          >
-            <ScanBarcode className="w-4 h-4 text-amber-400" />
-            <span className="hidden md:inline">Escanear</span>
-          </button>
+          {/* Permissions Status / Settings Button */}
+          {onOpenPermissionsPrompt && (
+            <button
+              onClick={onOpenPermissionsPrompt}
+              className={`p-1.5 sm:p-2 rounded-xl border transition-all relative ${
+                needsPermissions
+                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-400 animate-pulse'
+                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Ajustes de permisos del teléfono (GPS y Notificaciones)"
+              aria-label="Permisos del teléfono"
+            >
+              <Smartphone className="w-4 h-4" />
+              {needsPermissions && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-zinc-950" />
+              )}
+            </button>
+          )}
+
+          {/* Notifications Drawer Button */}
+          {onOpenNotifications && (
+            <button
+              onClick={onOpenNotifications}
+              className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all relative active:scale-95"
+              title="Notificaciones del sistema"
+              aria-label="Notificaciones"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] text-[9px] font-black rounded-full bg-amber-500 text-black flex items-center justify-center animate-bounce">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Theme toggle */}
           <button

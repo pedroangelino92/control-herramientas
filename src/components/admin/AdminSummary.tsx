@@ -85,67 +85,21 @@ export const AdminSummary: React.FC<AdminSummaryProps> = ({
 
   return (
     <div className="space-y-3.5 sm:space-y-4">
-      {/* 1. COMPACT OPERATIONS HEADER BAR (Space-optimized) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-lg">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-4 h-4" />
+      {totalTools === 0 && (
+        <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
+          <div>
+            <h3 className="text-sm font-bold text-white">Inventario de herramientas vacío</h3>
+            <p className="text-xs text-zinc-400">Puedes cargar un catálogo demo inicial para comenzar a operar.</p>
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xs sm:text-sm font-black text-white tracking-tight truncate">
-                Panel de Control de Almacén
-              </h2>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold px-1.5 py-0.2 rounded-full hidden sm:inline">
-                En línea
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-[11px] text-zinc-400 truncate">
-              Supervisión de inventario, solicitudes de técnicos y trazabilidad
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-          {totalTools === 0 && (
-            <button
-              onClick={handleSeedTools}
-              disabled={seeding}
-              className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-bold border border-amber-500/30 transition-all flex items-center gap-1"
-            >
-              <Database className="w-3.5 h-3.5 text-amber-400" />
-              <span>{seeding ? 'Cargando...' : 'Cargar Demo'}</span>
-            </button>
-          )}
-
-          {onOpenQuickScanner && (
-            <button
-              onClick={onOpenQuickScanner}
-              className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700 transition-colors flex items-center gap-1"
-              title="Escanear código de barras"
-            >
-              <ScanBarcode className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Escanear</span>
-            </button>
-          )}
-
           <button
-            onClick={onOpenNewLoanModal}
-            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700 transition-colors flex items-center gap-1"
+            onClick={handleSeedTools}
+            disabled={seeding}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all shadow-md shadow-amber-500/20"
           >
-            <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
-            <span>Salida Directa</span>
-          </button>
-
-          <button
-            onClick={onOpenNewToolModal}
-            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold shadow-md shadow-amber-500/20 transition-all flex items-center gap-1 active:scale-95"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Nueva Herramienta</span>
+            {seeding ? 'Cargando...' : 'Cargar Herramientas Demo'}
           </button>
         </div>
-      </div>
+      )}
 
       {/* 2. SOLICITUDES DE RETIRO PENDIENTES - HIGH PRIORITY ALERT CARD */}
       {pendingSolicitudes.length > 0 && (

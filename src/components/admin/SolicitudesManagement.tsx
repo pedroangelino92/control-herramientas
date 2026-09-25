@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Check, 
   X, 
@@ -20,11 +20,12 @@ import {
   ExternalLink,
   Ban
 } from 'lucide-react';
-import { SolicitudRetiro, Herramienta, CondicionHerramienta } from '../../types';
+import { SolicitudRetiro, Herramienta, CondicionHerramienta, GeoLocationPoint } from '../../types';
 import { autorizarSolicitudRetiro, rechazarSolicitudRetiro } from '../../services/toolService';
 import { captureCurrentLocation, getGoogleMapsUrl } from '../../services/geoService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface SolicitudesManagementProps {
   solicitudes: SolicitudRetiro[];
@@ -47,6 +48,20 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
   const [observacionesEntrega, setObservacionesEntrega] = useState('');
   const [condicionEntrega, setCondicionEntrega] = useState<CondicionHerramienta>('Bueno');
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [adminGps, setAdminGps] = useState<GeoLocationPoint | null>(null);
+  const [loadingAdminGps, setLoadingAdminGps] = useState(false);
+
+  // Capture GPS whenever authorization modal opens
+  useEffect(() => {
+    if (solicitudToAuthorize) {
+      setLoadingAdminGps(true);
+      captureCurrentLocation()
+        .then((loc) => setAdminGps(loc))
+        .finally(() => setLoadingAdminGps(false));
+    } else {
+      setAdminGps(null);
+    }
+  }, [solicitudToAuthorize]);
 
   // Rejection Modal state
   const [solicitudToReject, setSolicitudToReject] = useState<SolicitudRetiro | null>(null);
@@ -80,11 +95,25 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
   // Handle Authorize
   const handleConfirmAuthorize = async () => {
     if (!solicitudToAuthorize) return;
+
+    let adminGeo = adminGps;
+    if (!adminGeo) {
+      setLoadingAdminGps(true);
+      adminGeo = await captureCurrentLocation();
+      setLoadingAdminGps(false);
+      if (adminGeo) {
+        setAdminGps(adminGeo);
+      }
+    }
+
+    if (!adminGeo) {
+      showToast('error', 'GPS Obligatorio', 'Debes tener la ubicación encendida para autorizar la entrega de herramientas.');
+      return;
+    }
+
     setIsAuthorizing(true);
     try {
       const adminNombre = userProfile?.nombre || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Administrador';
-      
-      const adminGeo = await captureCurrentLocation();
 
       await autorizarSolicitudRetiro(
         solicitudToAuthorize,
@@ -491,6 +520,14 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
                   className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
+
+              {/* Mandatory GPS Notice for Admin */}
+              <GpsRequirementNotice
+                gps={adminGps}
+                loading={loadingAdminGps}
+                onGpsAcquired={setAdminGps}
+                actionName="autorizar y entregar las herramientas"
+              />
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
@@ -504,11 +541,13 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmAuthorize}
-                disabled={isAuthorizing}
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all shadow flex items-center gap-1.5 disabled:opacity-50"
+                disabled={isAuthorizing || !adminGps || loadingAdminGps}
+                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all shadow flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isAuthorizing ? (
                   <span>Registrando...</span>
+                ) : !adminGps ? (
+                  <span>Activar GPS para Autorizar</span>
                 ) : (
                   <>
                     <Check className="w-3.5 h-3.5 stroke-[3]" />

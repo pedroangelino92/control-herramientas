@@ -33,6 +33,7 @@ interface AdminDashboardProps {
   solicitudes: SolicitudRetiro[];
   transferencias?: TransferenciaCampo[];
   onOpenQuickScanner: () => void;
+  onSwitchToTechnician?: () => void;
 }
 
 export type AdminTab = 'summary' | 'inventory' | 'loans' | 'solicitudes' | 'geo_audit' | 'users';
@@ -44,6 +45,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   solicitudes,
   transferencias = [],
   onOpenQuickScanner,
+  onSwitchToTechnician,
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('summary');
 
@@ -95,147 +97,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-20 md:pb-6">
-      {/* PC Admin Top Banner / Fast Actions Header */}
-      <div className="hidden lg:flex items-center justify-between p-4 bg-zinc-900/60 border border-zinc-800 rounded-2xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-white">Panel de Administración de Almacén (Vista de Escritorio)</h2>
-            <p className="text-xs text-zinc-400">Control maestro de inventario, auditoría de geolocalización GPS y traspasos en campo</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          {pendingSolicitudesCount > 0 && (
-            <button
-              onClick={() => setActiveTab('solicitudes')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500 text-black text-xs font-black shadow-lg shadow-amber-500/20 animate-pulse"
-            >
-              <Layers className="w-4 h-4" />
-              <span>{pendingSolicitudesCount} Solicitud(es) por Autorizar</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => {
-              setToolToEdit(null);
-              setIsToolModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-bold transition-colors"
-          >
-            <Plus className="w-4 h-4 text-amber-400" />
-            <span>Nueva Herramienta</span>
-          </button>
-
-          <button
-            onClick={onOpenQuickScanner}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-bold transition-colors"
-          >
-            <ScanBarcode className="w-4 h-4 text-amber-400" />
-            <span>Escanear Código</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Navigation Tabs Bar */}
-      <div className="bg-zinc-900 border border-zinc-800 p-1 sm:p-1.5 rounded-2xl flex items-center justify-between overflow-x-auto shadow-lg">
-        <div className="flex items-center gap-1 min-w-max w-full">
-          <button
-            onClick={() => setActiveTab('summary')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'summary'
-                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>Métricas & Resumen</span>
-          </button>
-
-          {/* Solicitudes right after summary for instant access */}
-          <button
-            onClick={() => setActiveTab('solicitudes')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-bold transition-all relative ${
-              activeTab === 'solicitudes'
-                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                : pendingSolicitudesCount > 0
-                ? 'text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Solicitudes de Retiro</span>
-            {pendingSolicitudesCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-black text-[10px] font-black animate-pulse">
-                {pendingSolicitudesCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'inventory'
-                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-            }`}
-          >
-            <Wrench className="w-4 h-4" />
-            <span>Inventario ({herramientas.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('loans')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'loans'
-                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-            }`}
-          >
-            <ArrowLeftRight className="w-4 h-4" />
-            <span>Préstamos</span>
-          </button>
-
-          {/* Tab: Geolocalización & Auditoría GPS */}
-          <button
-            onClick={() => setActiveTab('geo_audit')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-bold transition-all relative ${
-              activeTab === 'geo_audit'
-                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-            }`}
-          >
-            <Compass className="w-4 h-4" />
-            <span>Trazabilidad GPS</span>
-            {transferencias.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-cyan-500 text-black text-[10px] font-black">
-                {transferencias.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-bold transition-all relative ${
-              activeTab === 'users'
-                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Usuarios ({usuarios.length})</span>
-            {pendingUsersCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                {pendingUsersCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
+    <div className="space-y-4 sm:space-y-6 pb-14">
       {/* Main Tab Content */}
       <div className="animate-in fade-in duration-200">
         {activeTab === 'summary' && (
@@ -344,13 +206,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       />
 
       {/* ========================================================================= */}
-      {/* MOBILE BOTTOM NAVIGATION BAR (THUMB-FRIENDLY APP BAR FOR TELEPHONES)      */}
+      {/* BOTTOM NAVIGATION BAR (THUMB-FRIENDLY APP BAR FOR MOBILE & DESKTOP)       */}
       {/* ========================================================================= */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800/90 shadow-2xl block md:hidden"
-        aria-label="Navegación móvil de administrador"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800/90 shadow-2xl block"
+        aria-label="Navegación de administrador"
       >
-        <div className="flex items-center justify-around px-1 py-1.5 max-w-lg mx-auto">
+        <div className="flex items-center justify-around px-2 py-1.5 max-w-xl mx-auto">
           {/* 1. Resumen */}
           <button
             type="button"
@@ -491,6 +353,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-0.5" />
             )}
           </button>
+
+          {/* 7. Retirar / Modo Técnico */}
+          {onSwitchToTechnician && (
+            <button
+              type="button"
+              onClick={onSwitchToTechnician}
+              className="flex-1 min-w-[50px] flex flex-col items-center justify-center py-1 rounded-xl transition-all text-amber-400 hover:text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30"
+              title="Retirar herramientas y gestionar traspasos en campo como técnico"
+            >
+              <Wrench className="w-4 h-4 text-amber-400" />
+              <span className="text-[10px] mt-0.5 tracking-tight">Retirar</span>
+            </button>
+          )}
         </div>
       </nav>
     </div>

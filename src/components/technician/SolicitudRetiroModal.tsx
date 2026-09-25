@@ -29,11 +29,12 @@ import {
   XCircle
 } from 'lucide-react';
 import { Herramienta, HerramientaSolicitada, CondicionHerramienta, GeoLocationPoint } from '../../types';
-import { createSolicitudRetiro } from '../../services/toolService';
+import { createSolicitudRetiro, autorizarSolicitudRetiro } from '../../services/toolService';
 import { captureCurrentLocation, getGoogleMapsUrl } from '../../services/geoService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { ToolConditionPopUp } from './ToolConditionPopUp';
+import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface SolicitudRetiroModalProps {
   isOpen: boolean;
@@ -65,8 +66,10 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
   savedToolConditions = {},
   onUpdateCondition,
 }) => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, isAdmin } = useAuth();
   const { showToast } = useToast();
+
+  const [autoAuthorizeAsAdmin, setAutoAuthorizeAsAdmin] = useState(true);
 
   // Mode: 'edit' (building the request) | 'preview' (full preview before withdrawing)
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
@@ -221,7 +224,19 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
     try {
       let finalGps = gpsLocation;
       if (!finalGps) {
+        setLoadingGps(true);
         finalGps = await captureCurrentLocation();
+        setLoadingGps(false);
+        if (finalGps) {
+          setGpsLocation(finalGps);
+        }
+      }
+
+      if (!finalGps) {
+        setErrorMsg('Ubicación GPS obligatoria: Debes activar la ubicación del teléfono para poder solicitar el retiro de herramientas.');
+        showToast('error', 'GPS Requerido', 'Debes encender la ubicación de tu teléfono para enviar la solicitud.');
+        setSubmitting(false);
+        return;
       }
 
       const tecnicoNombre = userProfile?.nombre || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Técnico';
@@ -243,7 +258,7 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
         };
       });
 
-      await createSolicitudRetiro({
+      const newSolicitudId = await createSolicitudRetiro({
         tecnicoUid: currentUser?.uid || '',
         tecnicoNombre,
         tecnicoEmail,
@@ -252,11 +267,42 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
         geoSolicitud: finalGps,
       });
 
-      showToast(
-        'success',
-        '¡Solicitud enviada con éxito!',
-        `Se solicitó el retiro de ${cart.length} herramienta(s) con registro de estado y GPS. Esperando autorización.`
-      );
+      if (isAdmin && autoAuthorizeAsAdmin && newSolicitudId) {
+        const fullSolicitud = {
+          id: newSolicitudId,
+          nroSolicitud: `SOL-${Math.floor(1000 + Math.random() * 9000)}`,
+          tecnicoUid: currentUser?.uid || '',
+          tecnicoNombre,
+          tecnicoEmail,
+          herramientas: herramientasSolicitadas,
+          cantidadTotal: herramientasSolicitadas.length,
+          fechaSolicitud: new Date().toISOString(),
+          motivoUso: motivoUso.trim(),
+          estado: 'Pendiente' as const,
+          ...(finalGps ? { geoSolicitud: finalGps } : {}),
+        };
+
+        await autorizarSolicitudRetiro(
+          fullSolicitud,
+          currentUser?.uid || '',
+          tecnicoNombre,
+          'Retiro directo por Administrador',
+          'Bueno',
+          finalGps
+        );
+
+        showToast(
+          'success',
+          '¡Retiro completado!',
+          `Se registraron ${cart.length} herramienta(s) directamente en tu posesión con GPS.`
+        );
+      } else {
+        showToast(
+          'success',
+          '¡Solicitud enviada con éxito!',
+          `Se solicitó el retiro de ${cart.length} herramienta(s) con registro de estado y GPS. Esperando autorización.`
+        );
+      }
 
       onClearCart();
       onSuccessSubmit();
@@ -608,19 +654,20 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
                     </strong>
                   </div>
 
-                  {gpsLocation && (
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-400 font-mono">
-                      <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span>GPS: {gpsLocation.latitude.toFixed(4)}, {gpsLocation.longitude.toFixed(4)} (±{gpsLocation.accuracy}m)</span>
-                    </div>
-                  )}
-
                   {motivoUso && (
                     <div className="w-full pt-1 border-t border-zinc-900 text-zinc-400 text-[10px] truncate">
                       <span className="text-zinc-500 font-bold">Motivo:</span> "{motivoUso}"
                     </div>
                   )}
                 </div>
+
+                {/* GPS Requirement Notice Banner */}
+                <GpsRequirementNotice
+                  gps={gpsLocation}
+                  loading={loadingGps}
+                  onGpsAcquired={setGpsLocation}
+                  actionName="solicitar el retiro de herramientas"
+                />
 
                 {/* Central Tools List (Dominates screen real estate!) */}
                 <div className="space-y-1.5">
@@ -701,6 +748,25 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
             )}
           </div>
 
+          {/* Preview Footer Auto-Authorize switch for Admin */}
+          {viewMode === 'preview' && isAdmin && (
+            <div className="px-3.5 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center justify-between gap-2 shrink-0">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-amber-200">
+                <input
+                  type="checkbox"
+                  checked={autoAuthorizeAsAdmin}
+                  onChange={(e) => setAutoAuthorizeAsAdmin(e.target.checked)}
+                  className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+                />
+                <span className="font-semibold">Auto-autorizar retiro inmediato</span>
+                <span className="text-[10px] text-amber-300/80 hidden sm:inline">(quedan en tu posesión al instante)</span>
+              </label>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                Modo Admin
+              </span>
+            </div>
+          )}
+
           {/* ===================================================================== */}
           {/* 3. MODAL FOOTER - SLEEK & COMPACT SINGLE ROW                          */}
           {/* ===================================================================== */}
@@ -745,11 +811,16 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
                   <button
                     type="button"
                     onClick={handleFinalSubmit}
-                    disabled={submitting || cart.length === 0}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black text-xs font-black transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-40 active:scale-95"
+                    disabled={submitting || cart.length === 0 || !gpsLocation || loadingGps}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black text-xs font-black transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                   >
                     {submitting ? (
                       <span>Enviando...</span>
+                    ) : !gpsLocation ? (
+                      <>
+                        <MapPin className="w-3.5 h-3.5 text-black" />
+                        <span>Activar GPS para Enviar</span>
+                      </>
                     ) : (
                       <>
                         <Send className="w-3.5 h-3.5" />

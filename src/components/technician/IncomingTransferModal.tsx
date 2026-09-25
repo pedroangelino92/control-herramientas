@@ -16,6 +16,7 @@ import { TransferenciaCampo, CondicionHerramienta, GeoLocationPoint } from '../.
 import { confirmarTransferenciaCampo, rechazarTransferenciaCampo } from '../../services/toolService';
 import { captureCurrentLocation, calculateDistanceMeters, formatDistance, getGoogleMapsUrl, PRESENCE_DISTANCE_THRESHOLD_METERS } from '../../services/geoService';
 import { useToast } from '../../contexts/ToastContext';
+import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface IncomingTransferModalProps {
   isOpen: boolean;
@@ -100,13 +101,21 @@ export const IncomingTransferModal: React.FC<IncomingTransferModalProps> = ({
   const isPresent = distanceMeters !== null ? distanceMeters <= PRESENCE_DISTANCE_THRESHOLD_METERS : false;
 
   const handleConfirm = async () => {
+    let finalGps = currentGps;
+    if (!finalGps) {
+      setLoadingGps(true);
+      finalGps = await captureCurrentLocation();
+      setLoadingGps(false);
+      if (finalGps) setCurrentGps(finalGps);
+    }
+
+    if (!finalGps) {
+      showToast('error', 'GPS Obligatorio', 'Debes tener la ubicación encendida para confirmar la recepción del traspaso.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      let finalGps = currentGps;
-      if (!finalGps) {
-        finalGps = await captureCurrentLocation();
-      }
-
       await confirmarTransferenciaCampo(
         transferencia,
         condicionReceptor,
@@ -325,6 +334,14 @@ export const IncomingTransferModal: React.FC<IncomingTransferModalProps> = ({
             />
           </div>
 
+          {/* Mandatory GPS notice */}
+          <GpsRequirementNotice
+            gps={currentGps}
+            loading={loadingGps}
+            onGpsAcquired={setCurrentGps}
+            actionName="confirmar la recepción del traspaso en campo"
+          />
+
           {/* Reject Section Toggle */}
           {showRejectInput ? (
             <div className="p-3 rounded-2xl bg-rose-950/20 border border-rose-900/50 space-y-2">
@@ -383,11 +400,11 @@ export const IncomingTransferModal: React.FC<IncomingTransferModalProps> = ({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={isProcessing}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black text-xs font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-40"
+              disabled={isProcessing || !currentGps || loadingGps}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black text-xs font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4 stroke-[3]" />
-              <span>{isProcessing ? 'Confirmando recepción...' : 'Aceptar y Recibir Herramienta'}</span>
+              <span>{isProcessing ? 'Confirmando recepción...' : !currentGps ? 'Activar GPS para Recibir' : 'Aceptar y Recibir Herramienta'}</span>
             </button>
           </div>
         )}

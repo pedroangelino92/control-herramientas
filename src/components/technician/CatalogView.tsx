@@ -62,7 +62,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const availableCount = herramientas.filter((h) => h.estado === 'Disponible').length;
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

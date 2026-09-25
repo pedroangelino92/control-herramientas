@@ -168,3 +168,23 @@ export interface TransferenciaCampo {
   motivoRechazo?: string;
 }
 
+export type TipoNotificacion = 'solicitud' | 'aprobacion' | 'rechazo' | 'traspaso' | 'devolucion' | 'sistema';
+
+export interface NotificacionSistema {
+  id?: string;
+  destinatarioUid: string; // UID específico o 'todos_admin'
+  destinatarioEmail?: string;
+  titulo: string;
+  mensaje: string;
+  tipo: TipoNotificacion;
+  leida: boolean;
+  fecha: string; // ISO string
+  metadata?: {
+    solicitudId?: string;
+    herramientaId?: string;
+    transferenciaId?: string;
+    prestamoId?: string;
+    [key: string]: any;
+  };
+}
+
