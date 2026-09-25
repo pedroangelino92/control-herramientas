@@ -18,14 +18,16 @@ import {
   Sparkles,
   MapPin,
   ExternalLink,
-  Ban
+  Ban,
+  Trash2
 } from 'lucide-react';
-import { SolicitudRetiro, Herramienta, CondicionHerramienta, GeoLocationPoint } from '../../types';
-import { autorizarSolicitudRetiro, rechazarSolicitudRetiro } from '../../services/toolService';
+import { SolicitudRetiro, Herramienta, CondicionHerramienta, GeoLocationPoint, SUPERADMIN_EMAIL } from '../../types';
+import { autorizarSolicitudRetiro, rechazarSolicitudRetiro, deleteSolicitudRetiro } from '../../services/toolService';
 import { captureCurrentLocation, getGoogleMapsUrl } from '../../services/geoService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface SolicitudesManagementProps {
   solicitudes: SolicitudRetiro[];
@@ -38,10 +40,15 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
 }) => {
   const { userProfile, currentUser } = useAuth();
   const { showToast } = useToast();
+  const isSuperAdmin = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
 
   const [filterState, setFilterState] = useState<'all' | 'Pendiente' | 'Aprobada' | 'Rechazada'>('Pendiente');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Deletion state
+  const [solicitudToDelete, setSolicitudToDelete] = useState<SolicitudRetiro | null>(null);
+  const [isDeletingSolicitud, setIsDeletingSolicitud] = useState(false);
 
   // Authorization Modal state
   const [solicitudToAuthorize, setSolicitudToAuthorize] = useState<SolicitudRetiro | null>(null);
@@ -213,6 +220,26 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
       showToast('error', 'Error', 'No se pudo rechazar la solicitud.');
     } finally {
       setIsRejecting(false);
+    }
+  };
+
+  // Handle Delete Solicitud (SuperAdmin only)
+  const handleConfirmDeleteSolicitud = async () => {
+    if (!solicitudToDelete || !solicitudToDelete.id) return;
+    if (!isSuperAdmin) {
+      showToast('error', 'Permiso denegado', 'Solo el administrador principal puede eliminar registros.');
+      return;
+    }
+    setIsDeletingSolicitud(true);
+    try {
+      await deleteSolicitudRetiro(solicitudToDelete.id);
+      showToast('success', 'Solicitud Eliminada', `Se eliminó permanentemente la solicitud ${solicitudToDelete.nroSolicitud}.`);
+      setSolicitudToDelete(null);
+    } catch (err: any) {
+      console.error('Error deleting solicitud:', err);
+      showToast('error', 'Error al eliminar', err.message || 'No se pudo eliminar la solicitud.');
+    } finally {
+      setIsDeletingSolicitud(false);
     }
   };
 
@@ -493,6 +520,31 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
                     >
                       <X className="w-3.5 h-3.5" />
                       <span>Rechazar</span>
+                    </button>
+
+                    {isSuperAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setSolicitudToDelete(sol)}
+                        className="p-2 rounded-xl bg-zinc-800 hover:bg-rose-950/40 border border-zinc-700 hover:border-rose-500/50 text-zinc-400 hover:text-rose-400 text-xs font-bold transition-all flex items-center justify-center shrink-0 active:scale-95"
+                        title="Eliminar solicitud permanentemente (Solo admin)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {!isPending && isSuperAdmin && (
+                  <div className="flex justify-end pt-1.5 border-t border-zinc-800/60">
+                    <button
+                      type="button"
+                      onClick={() => setSolicitudToDelete(sol)}
+                      className="px-2.5 py-1 rounded-lg text-[11px] text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 transition-colors flex items-center gap-1 font-medium"
+                      title="Eliminar registro de solicitud (Solo admin)"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Eliminar registro</span>
                     </button>
                   </div>
                 )}
@@ -791,6 +843,19 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Request Deletion (SuperAdmin only) */}
+      <ConfirmationModal
+        isOpen={Boolean(solicitudToDelete)}
+        onClose={() => setSolicitudToDelete(null)}
+        onConfirm={handleConfirmDeleteSolicitud}
+        title="Eliminar Solicitud de Retiro"
+        message={`¿Estás seguro de que deseas eliminar permanentemente la solicitud "${solicitudToDelete?.nroSolicitud}" de ${solicitudToDelete?.tecnicoNombre}? Esta acción borrará el registro de prueba de la base de datos.`}
+        confirmText="Eliminar Solicitud"
+        cancelText="Cancelar"
+        isDestructive={true}
+        isLoading={isDeletingSolicitud}
+      />
     </div>
   );
 };

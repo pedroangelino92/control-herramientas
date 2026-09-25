@@ -19,9 +19,10 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
-import { Herramienta, EstadoHerramienta, CategoriaHerramienta } from '../../types';
+import { Herramienta, EstadoHerramienta, CategoriaHerramienta, SUPERADMIN_EMAIL } from '../../types';
 import { deleteHerramienta } from '../../services/toolService';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface ToolInventoryProps {
@@ -42,6 +43,8 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
   onStartReturn,
 }) => {
   const { showToast } = useToast();
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -71,6 +74,10 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!toolToDelete || !toolToDelete.id) return;
+    if (!isSuperAdmin) {
+      showToast('error', 'Permiso denegado', 'Solo el administrador principal (pedroangelino92@gmail.com) puede eliminar herramientas.');
+      return;
+    }
     setIsDeleting(true);
     try {
       await deleteHerramienta(toolToDelete.id);
@@ -302,14 +309,16 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => setToolToDelete(tool)}
-                      className="p-2 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
-                      title="Eliminar herramienta"
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => setToolToDelete(tool)}
+                        className="p-2 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                        title="Eliminar herramienta (Solo admin)"
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   <div>
@@ -417,13 +426,15 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => setToolToDelete(tool)}
-                          className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            onClick={() => setToolToDelete(tool)}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                            title="Eliminar herramienta (Solo admin)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

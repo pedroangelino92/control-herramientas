@@ -292,6 +292,32 @@ export const returnHerramientaLoan = async (input: ReturnPrestamoInput): Promise
   }
 };
 
+export const deletePrestamo = async (
+  prestamoId: string,
+  herramientaId?: string,
+  resetToolStatus: boolean = true
+): Promise<void> => {
+  const batch = writeBatch(db);
+  const prestamoRef = doc(db, 'prestamos', prestamoId);
+  batch.delete(prestamoRef);
+
+  if (herramientaId && resetToolStatus) {
+    const herramientaRef = doc(db, 'herramientas', herramientaId);
+    batch.update(herramientaRef, {
+      estado: 'Disponible',
+      tecnicoAsignadoUid: '',
+      tecnicoAsignadoNombre: '',
+      prestamoActualId: '',
+    });
+  }
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `prestamos/${prestamoId}`);
+  }
+};
+
 // ==========================================
 // USUARIOS MANAGEMENT
 // ==========================================
@@ -335,9 +361,27 @@ export const updateUsuarioRolAndEstado = async (
   }
 };
 
+export const deleteUsuario = async (uid: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'usuarios', uid);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `usuarios/${uid}`);
+  }
+};
+
 // ==========================================
 // SOLICITUDES DE RETIRO (CANASTA / AUTORIZACIONES)
 // ==========================================
+
+export const deleteSolicitudRetiro = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'solicitudes_retiro', id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `solicitudes_retiro/${id}`);
+  }
+};
 
 export const subscribeToSolicitudesRetiro = (
   onSuccess: (solicitudes: SolicitudRetiro[]) => void,

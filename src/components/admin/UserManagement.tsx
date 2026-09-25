@@ -12,10 +12,11 @@ import {
   MoreVertical,
   Mail,
   Phone,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
-import { Usuario, RolUsuario, EstadoUsuario } from '../../types';
-import { updateUsuarioRolAndEstado } from '../../services/toolService';
+import { Usuario, RolUsuario, EstadoUsuario, SUPERADMIN_EMAIL } from '../../types';
+import { updateUsuarioRolAndEstado, deleteUsuario } from '../../services/toolService';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
@@ -27,13 +28,14 @@ interface UserManagementProps {
 export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
   const { userProfile, currentUser } = useAuth();
   const { showToast } = useToast();
+  const isSuperAdmin = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'pending' | 'tecnico' | 'admin'>('all');
 
   // Modal confirmation state
   const [actionUser, setActionUser] = useState<Usuario | null>(null);
-  const [actionType, setActionType] = useState<'approve_tech' | 'approve_admin' | 'make_admin' | 'make_tech' | 'reject' | null>(null);
+  const [actionType, setActionType] = useState<'approve_tech' | 'approve_admin' | 'make_admin' | 'make_tech' | 'reject' | 'delete_user' | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const pendingCount = usuarios.filter((u) => u.estado === 'pendiente').length;
@@ -75,6 +77,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
       } else if (actionType === 'reject') {
         await updateUsuarioRolAndEstado(actionUser.uid, 'rechazado', actionUser.rol, adminName);
         showToast('info', 'Cuenta Rechazada', `Se ha denegado el acceso a ${actionUser.nombre}.`);
+      } else if (actionType === 'delete_user') {
+        if (!isSuperAdmin) {
+          showToast('error', 'Permiso denegado', 'Solo el administrador principal puede eliminar usuarios.');
+          return;
+        }
+        await deleteUsuario(actionUser.uid);
+        showToast('success', 'Usuario Eliminado', `Se ha eliminado la cuenta de ${actionUser.nombre}.`);
       }
 
       setActionUser(null);
@@ -124,6 +133,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
           message: `¿Deseas suspender o rechazar la cuenta de ${actionUser.nombre}? El usuario no podrá ingresar al sistema.`,
           isDestructive: true,
           confirmText: 'Rechazar Acceso',
+        };
+      case 'delete_user':
+        return {
+          title: 'Eliminar Usuario Permanentemente',
+          message: `¿Estás seguro de que deseas eliminar permanentemente la cuenta de ${actionUser.nombre} (${actionUser.email})? Se borrará el registro del usuario del sistema.`,
+          isDestructive: true,
+          confirmText: 'Eliminar Usuario',
         };
     }
   };
@@ -323,6 +339,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
                     >
                       <X className="w-4 h-4" />
                     </button>
+                    {isSuperAdmin && !isCurrentSelf && (
+                      <button
+                        onClick={() => {
+                          setActionUser(user);
+                          setActionType('delete_user');
+                        }}
+                        className="p-1.5 bg-zinc-800 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-400 rounded-xl transition-colors"
+                        title="Eliminar usuario permanentemente"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ) : isUserRejected ? (
                   <div className="flex items-center gap-2 w-full justify-between flex-wrap">
@@ -348,6 +376,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Habilitar Admin</span>
                       </button>
+                      {isSuperAdmin && !isCurrentSelf && (
+                        <button
+                          onClick={() => {
+                            setActionUser(user);
+                            setActionType('delete_user');
+                          }}
+                          className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                          title="Eliminar usuario permanentemente"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -380,15 +420,29 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
                     </div>
 
                     {!isCurrentSelf && (
-                      <button
-                        onClick={() => {
-                          setActionUser(user);
-                          setActionType('reject');
-                        }}
-                        className="text-xs text-rose-400 hover:text-rose-300 hover:underline"
-                      >
-                        Suspender
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setActionUser(user);
+                            setActionType('reject');
+                          }}
+                          className="text-xs text-rose-400 hover:text-rose-300 hover:underline"
+                        >
+                          Suspender
+                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            onClick={() => {
+                              setActionUser(user);
+                              setActionType('delete_user');
+                            }}
+                            className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                            title="Eliminar usuario permanentemente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

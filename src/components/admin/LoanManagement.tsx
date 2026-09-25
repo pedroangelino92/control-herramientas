@@ -13,9 +13,14 @@ import {
   Printer, 
   Download,
   Tag,
-  UserPlus
+  UserPlus,
+  Trash2
 } from 'lucide-react';
-import { Prestamo, Herramienta } from '../../types';
+import { Prestamo, Herramienta, SUPERADMIN_EMAIL } from '../../types';
+import { deletePrestamo } from '../../services/toolService';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface LoanManagementProps {
   prestamos: Prestamo[];
@@ -30,8 +35,33 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
   onOpenNewLoanModal,
   onOpenReturnModal,
 }) => {
+  const { currentUser } = useAuth();
+  const { showToast } = useToast();
+  const isSuperAdmin = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all'); // all, Activo, Devuelto, Atrasado
+  const [loanToDelete, setLoanToDelete] = useState<Prestamo | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteLoan = async () => {
+    if (!loanToDelete || !loanToDelete.id) return;
+    if (!isSuperAdmin) {
+      showToast('error', 'Permiso denegado', 'Solo el administrador principal puede eliminar registros.');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deletePrestamo(loanToDelete.id, loanToDelete.herramientaId, loanToDelete.estado === 'Activo');
+      showToast('success', 'Registro Eliminado', 'Se ha eliminado el registro de préstamo y actualizado el estado del equipo.');
+      setLoanToDelete(null);
+    } catch (err: any) {
+      showToast('error', 'Error al eliminar', err.message || 'No se pudo eliminar el registro.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const now = new Date();
 
@@ -321,6 +351,17 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                         Registrar Devolución
                       </button>
                     )}
+
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => setLoanToDelete(loan)}
+                        className="p-2 rounded-xl bg-zinc-900 hover:bg-rose-950/50 border border-zinc-800 hover:border-rose-500/50 text-zinc-500 hover:text-rose-400 transition-colors"
+                        title="Eliminar registro de préstamo (Solo admin)"
+                        aria-label="Eliminar registro"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -328,6 +369,19 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
           })}
         </div>
       )}
+
+      {/* Confirmation Modal for loan record deletion */}
+      <ConfirmationModal
+        isOpen={Boolean(loanToDelete)}
+        onClose={() => setLoanToDelete(null)}
+        onConfirm={handleDeleteLoan}
+        title="Eliminar Registro de Préstamo"
+        message={`¿Estás seguro de que deseas eliminar este registro de préstamo de "${loanToDelete?.herramientaNombre}" (${loanToDelete?.herramientaCodigo})? Si el préstamo se encuentra activo, el equipo volverá a estar disponible.`}
+        confirmText="Eliminar Registro"
+        cancelText="Cancelar"
+        isDestructive={true}
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

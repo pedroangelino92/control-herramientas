@@ -1,3 +1,5 @@
+export const SUPERADMIN_EMAIL = 'pedroangelino92@gmail.com';
+
 export type RolUsuario = 'admin' | 'tecnico';
 export type EstadoUsuario = 'pendiente' | 'activo' | 'rechazado';
 
