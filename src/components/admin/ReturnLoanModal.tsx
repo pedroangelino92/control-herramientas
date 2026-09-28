@@ -5,6 +5,7 @@ import { returnHerramientaLoan } from '../../services/toolService';
 import { captureCurrentLocation } from '../../services/geoService';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNetwork } from '../../contexts/NetworkContext';
 import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface ReturnLoanModalProps {
@@ -22,6 +23,7 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
 }) => {
   const { userProfile, currentUser, isSuperAdmin } = useAuth();
   const { showToast } = useToast();
+  const { isOnline } = useNetwork();
 
   const isOwnLoan = 
     prestamo?.tecnicoUid === currentUser?.uid ||
@@ -52,6 +54,15 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isOnline) {
+      showToast(
+        'warning',
+        'Conexión requerida',
+        'No tienes conexión a internet. Se requiere señal activa para inspeccionar y registrar la devolución en el inventario central.'
+      );
+      return;
+    }
 
     if (!canReceiveReturn) {
       showToast('error', 'Auto-recepción no permitida', 'No puedes auto-recibir la devolución de una herramienta que tienes asignada. Debe ser recibida e inspeccionada por otro administrador o el superadmin.');

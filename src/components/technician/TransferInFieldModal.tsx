@@ -17,6 +17,7 @@ import { createTransferenciaCampo } from '../../services/toolService';
 import { captureCurrentLocation, getGoogleMapsUrl } from '../../services/geoService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useNetwork } from '../../contexts/NetworkContext';
 import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface TransferInFieldModalProps {
@@ -65,6 +66,7 @@ export const TransferInFieldModal: React.FC<TransferInFieldModalProps> = ({
 }) => {
   const { currentUser, userProfile } = useAuth();
   const { showToast } = useToast();
+  const { isOnline } = useNetwork();
 
   const [selectedRecipientUid, setSelectedRecipientUid] = useState<string>('');
   const [condicion, setCondicion] = useState<CondicionHerramienta>('Bueno');
@@ -102,6 +104,13 @@ export const TransferInFieldModal: React.FC<TransferInFieldModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isOnline) {
+      setErrorMsg('Sin conexión a internet: Se requiere señal activa para notificar al otro técnico y que acepte el traspaso en vivo.');
+      showToast('warning', 'Conexión requerida', 'No tienes conexión a internet. Acércate a una zona con señal para iniciar el traspaso.');
+      return;
+    }
+
     if (!selectedRecipientUid) {
       setErrorMsg('Por favor selecciona el técnico que recibirá la herramienta en campo.');
       return;

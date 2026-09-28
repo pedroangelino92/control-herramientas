@@ -6,6 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
+import { NetworkProvider } from './contexts/NetworkContext';
+import { OfflineNoticeBanner } from './components/common/OfflineNoticeBanner';
 import { Header } from './components/common/Header';
 import { AuthView } from './components/auth/AuthView';
 import { PendingApprovalView } from './components/auth/PendingApprovalView';
@@ -230,6 +232,7 @@ const MainContent: React.FC = () => {
   // Approved User (Admin or Technician)
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-100 text-zinc-900'} transition-colors flex flex-col`}>
+      <OfflineNoticeBanner />
       <Header
         onOpenScanner={() => setIsQuickScannerOpen(true)}
         isDarkMode={isDarkMode}
@@ -351,10 +354,12 @@ const MainContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <MainContent />
-      </ToastProvider>
-    </AuthProvider>
+    <NetworkProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <MainContent />
+        </ToastProvider>
+      </AuthProvider>
+    </NetworkProvider>
   );
 }

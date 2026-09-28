@@ -33,6 +33,7 @@ import { createSolicitudRetiro, autorizarSolicitudRetiro } from '../../services/
 import { captureCurrentLocation, getGoogleMapsUrl } from '../../services/geoService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useNetwork } from '../../contexts/NetworkContext';
 import { ToolConditionPopUp } from './ToolConditionPopUp';
 import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
@@ -68,6 +69,7 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
 }) => {
   const { currentUser, userProfile, isAdmin } = useAuth();
   const { showToast } = useToast();
+  const { isOnline } = useNetwork();
 
   const [autoAuthorizeAsAdmin, setAutoAuthorizeAsAdmin] = useState(true);
 
@@ -212,6 +214,12 @@ export const SolicitudRetiroModal: React.FC<SolicitudRetiroModalProps> = ({
 
   // Final Submit
   const handleFinalSubmit = async () => {
+    if (!isOnline) {
+      setErrorMsg('Sin conexión a internet: Se requiere señal activa para enviar y registrar la solicitud de retiro en el almacén.');
+      showToast('warning', 'Conexión requerida', 'No tienes conexión a internet. Acércate a una zona con señal para enviar tu solicitud.');
+      return;
+    }
+
     if (cart.length === 0) {
       setErrorMsg('No hay herramientas seleccionadas.');
       setViewMode('edit');

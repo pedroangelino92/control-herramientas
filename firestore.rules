@@ -146,5 +146,16 @@ service cloud.firestore {
       // Eliminar: Solo el superadmin pedroangelino92@gmail.com
       allow delete: if isSuperAdmin();
     }
+
+    // Colección de Registro de Auditoría de Almacén
+    match /auditoria/{auditoriaId} {
+      // Solo administradores pueden consultar el historial de auditoría
+      allow read: if isAdmin();
+      // Cualquier usuario autenticado puede escribir eventos del sistema
+      allow create: if isSignedIn();
+      // No se permite modificar ni eliminar eventos de auditoría (inalterables) salvo el superadmin
+      allow update: if false;
+      allow delete: if isSuperAdmin();
+    }
   }
 }

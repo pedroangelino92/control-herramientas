@@ -18,6 +18,7 @@ import { registerMultiplePrestamos, ToolLoanItem } from '../../services/toolServ
 import { captureCurrentLocation } from '../../services/geoService';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNetwork } from '../../contexts/NetworkContext';
 import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface NewLoanModalProps {
@@ -45,6 +46,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
 }) => {
   const { userProfile, currentUser, isSuperAdmin } = useAuth();
   const { showToast } = useToast();
+  const { isOnline } = useNetwork();
 
   // Multi-tool list state where each tool has its individual condition and notes
   const [loanTools, setLoanTools] = useState<LoanToolEntry[]>([]);
@@ -164,6 +166,16 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isOnline) {
+      showToast(
+        'warning',
+        'Conexión requerida',
+        'No tienes conexión a internet. Se requiere señal activa para registrar el préstamo en tiempo real y asignarlo al inventario.'
+      );
+      return;
+    }
+
     if (loanTools.length === 0) {
       showToast('warning', 'Selecciona al menos una herramienta', 'Debes elegir herramientas disponibles para prestar.');
       return;

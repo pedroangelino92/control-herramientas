@@ -30,6 +30,7 @@ import { autorizarSolicitudRetiro, rechazarSolicitudRetiro, deleteSolicitudRetir
 import { captureCurrentLocation, getGoogleMapsUrl } from '../../services/geoService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useNetwork } from '../../contexts/NetworkContext';
 import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 
@@ -44,6 +45,7 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
 }) => {
   const { userProfile, currentUser } = useAuth();
   const { showToast } = useToast();
+  const { isOnline } = useNetwork();
   const isSuperAdmin = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
 
   const [filterState, setFilterState] = useState<'all' | 'Pendiente' | 'Aprobada' | 'Rechazada'>('Pendiente');
@@ -163,6 +165,15 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
   const handleConfirmAuthorize = async () => {
     if (!solicitudToAuthorize) return;
 
+    if (!isOnline) {
+      showToast(
+        'warning',
+        'Conexión requerida',
+        'No tienes conexión a internet. Se requiere señal activa para que el retiro se registre en vivo y el técnico lo reciba en su cuenta.'
+      );
+      return;
+    }
+
     const isOwn = 
       solicitudToAuthorize.tecnicoUid === currentUser?.uid ||
       (!!solicitudToAuthorize.tecnicoEmail && !!currentUser?.email && solicitudToAuthorize.tecnicoEmail.toLowerCase() === currentUser.email.toLowerCase());
@@ -220,6 +231,14 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
   // Handle Reject
   const handleConfirmReject = async () => {
     if (!solicitudToReject) return;
+    if (!isOnline) {
+      showToast(
+        'warning',
+        'Conexión requerida',
+        'No tienes conexión a internet. Se requiere señal activa para notificar el rechazo.'
+      );
+      return;
+    }
     if (!motivoRechazo.trim()) {
       showToast('warning', 'Campo requerido', 'Indica el motivo del rechazo.');
       return;

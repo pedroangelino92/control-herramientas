@@ -45,6 +45,9 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+  const isUnavailable = (error as any)?.code === 'unavailable' || 
+    (error instanceof Error && (error.message.includes('unavailable') || error.message.includes('offline')));
+
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -61,20 +64,25 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+
+  if (isUnavailable) {
+    console.warn(`Firestore [${operationType}] at "${path}": Temporary offline/unavailable state. Operating from cache until connection reconnects.`);
+  } else {
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+  }
+
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Validation connection test on startup as required by skill
+// Validation connection test on startup as required by skill (only when authenticated)
 export async function testFirestoreConnection() {
+  if (!auth.currentUser) return;
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase connection: client appears offline or connecting.');
+  } catch (error: any) {
+    // Gracefully handle offline or network transient states
+    if (error?.code === 'unavailable' || (error instanceof Error && error.message.includes('offline'))) {
+      console.warn('Firebase connection: operating in cached/offline state until connection stabilizes.');
     }
   }
 }
-
-// Initial test trigger
-testFirestoreConnection();

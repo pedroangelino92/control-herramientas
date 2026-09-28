@@ -202,3 +202,24 @@ export interface NotificacionSistema {
   };
 }
 
+export type TipoAccionAuditoria = 
+  | 'importacion_masiva_csv' 
+  | 'importacion_masiva_fotos' 
+  | 'exportacion_backup_csv' 
+  | 'exportacion_backup_fotos'
+  | 'prestamo_creado'
+  | 'devolucion_completada'
+  | 'transferencia_confirmada';
+
+export interface RegistroAuditoria {
+  id?: string;
+  tipo: TipoAccionAuditoria;
+  usuarioUid: string;
+  usuarioEmail: string;
+  usuarioNombre: string;
+  fecha: string; // ISO
+  detalles: string;
+  totalElementos?: number;
+  metadata?: Record<string, any>;
+}
+

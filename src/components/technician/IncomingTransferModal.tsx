@@ -16,6 +16,7 @@ import { TransferenciaCampo, CondicionHerramienta, GeoLocationPoint } from '../.
 import { confirmarTransferenciaCampo, rechazarTransferenciaCampo } from '../../services/toolService';
 import { captureCurrentLocation, calculateDistanceMeters, formatDistance, getGoogleMapsUrl, PRESENCE_DISTANCE_THRESHOLD_METERS } from '../../services/geoService';
 import { useToast } from '../../contexts/ToastContext';
+import { useNetwork } from '../../contexts/NetworkContext';
 import { GpsRequirementNotice } from '../common/GpsRequirementNotice';
 
 interface IncomingTransferModalProps {
@@ -59,6 +60,7 @@ export const IncomingTransferModal: React.FC<IncomingTransferModalProps> = ({
   onSuccess,
 }) => {
   const { showToast } = useToast();
+  const { isOnline } = useNetwork();
 
   const [condicionReceptor, setCondicionReceptor] = useState<CondicionHerramienta>('Bueno');
   const [observacionesReceptor, setObservacionesReceptor] = useState<string>('');
@@ -101,6 +103,15 @@ export const IncomingTransferModal: React.FC<IncomingTransferModalProps> = ({
   const isPresent = distanceMeters !== null ? distanceMeters <= PRESENCE_DISTANCE_THRESHOLD_METERS : false;
 
   const handleConfirm = async () => {
+    if (!isOnline) {
+      showToast(
+        'warning',
+        'Conexión requerida',
+        'No tienes conexión a internet. Se requiere señal activa para que el traspaso se registre en vivo y el otro técnico quede liberado de la responsabilidad.'
+      );
+      return;
+    }
+
     let finalGps = currentGps;
     if (!finalGps) {
       setLoadingGps(true);
@@ -140,6 +151,15 @@ export const IncomingTransferModal: React.FC<IncomingTransferModalProps> = ({
   };
 
   const handleReject = async () => {
+    if (!isOnline) {
+      showToast(
+        'warning',
+        'Conexión requerida',
+        'No tienes conexión a internet. Se requiere señal activa para notificar el rechazo.'
+      );
+      return;
+    }
+
     if (!motivoRechazo.trim()) {
       showToast('warning', 'Motivo requerido', 'Por favor especifica por qué rechazas la herramienta.');
       return;

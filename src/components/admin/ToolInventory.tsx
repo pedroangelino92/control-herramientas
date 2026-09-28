@@ -18,7 +18,8 @@ import {
   Layers,
   LayoutGrid,
   List,
-  Tags
+  Tags,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Herramienta, EstadoHerramienta, CategoriaHerramienta, CategoriaItem, SUPERADMIN_EMAIL } from '../../types';
 import { deleteHerramienta } from '../../services/toolService';
@@ -26,6 +27,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { CategoryManagementModal } from './CategoryManagementModal';
+import { ToolCsvModal } from './ToolCsvModal';
 
 interface ToolInventoryProps {
   herramientas: Herramienta[];
@@ -59,6 +61,7 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
   const [toolToDelete, setToolToDelete] = useState<Herramienta | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
 
   // Filter tools
   const filteredTools = herramientas.filter((tool) => {
@@ -107,10 +110,24 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
       {/* Top Header & Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <Wrench className="w-6 h-6 text-amber-400" />
-            Inventario de Herramientas
-          </h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+              <Wrench className="w-6 h-6 text-amber-400" />
+              <span>Inventario de Herramientas</span>
+            </h2>
+
+            {/* Compact Green Spreadsheet Button right next to title */}
+            <button
+              type="button"
+              onClick={() => setIsCsvModalOpen(true)}
+              className="p-2 bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 hover:text-emerald-300 rounded-xl border border-emerald-500/40 shadow-sm transition-all shrink-0 active:scale-90"
+              title="Exportar backup o importar planilla Excel / CSV"
+              aria-label="Exportar e importar planilla Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+            </button>
+          </div>
+
           <p className="text-xs text-zinc-400 mt-0.5">
             {herramientas.length} herramientas registradas en total ({filteredTools.length} visibles)
           </p>
@@ -477,6 +494,13 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
         categorias={categorias}
+        herramientas={herramientas}
+      />
+
+      {/* CSV Import/Export Modal */}
+      <ToolCsvModal
+        isOpen={isCsvModalOpen}
+        onClose={() => setIsCsvModalOpen(false)}
         herramientas={herramientas}
       />
 

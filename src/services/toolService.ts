@@ -27,6 +27,8 @@ import {
   TransferenciaCampo,
   EstadoTransferenciaCampo,
   GeoLocationPoint,
+  RegistroAuditoria,
+  TipoAccionAuditoria,
   SUPERADMIN_EMAIL
 } from '../types';
 import { 
@@ -95,6 +97,162 @@ export const deleteHerramienta = async (id: string): Promise<void> => {
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `herramientas/${id}`);
   }
+};
+
+/**
+ * Bulk imports tools with automatic chunking (Firestore limit: 500 ops per batch)
+ * Handles both creating new tools and updating existing tools safely
+ */
+export const bulkImportHerramientas = async (
+  items: Array<{
+    codigo: string;
+    nombre: string;
+    categoria: string;
+    marca?: string;
+    modelo?: string;
+    numeroSerie?: string;
+    ubicacion: string;
+    notas?: string;
+    fotoUrl?: string;
+    estado: EstadoHerramienta;
+    existingId?: string;
+  }>,
+  conflictStrategy: 'skip' | 'update',
+  userId: string
+): Promise<{ created: number; updated: number; skipped: number }> => {
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  const now = new Date().toISOString();
+  const chunkSize = 400; // Keep safely below the 500 Firestore writeBatch limit
+
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    const batch = writeBatch(db);
+
+    for (const item of chunk) {
+      if (item.existingId) {
+        if (conflictStrategy === 'skip') {
+          skipped++;
+          continue;
+        } else {
+          // Update existing tool (preserves loan status if tool is actively loaned)
+          const docRef = doc(db, 'herramientas', item.existingId);
+          const updatePayload: Record<string, any> = {
+            nombre: item.nombre,
+            categoria: item.categoria,
+            ubicacion: item.ubicacion,
+            fechaActualizacion: now,
+          };
+          if (item.marca !== undefined) updatePayload.marca = item.marca;
+          if (item.modelo !== undefined) updatePayload.modelo = item.modelo;
+          if (item.numeroSerie !== undefined) updatePayload.numeroSerie = item.numeroSerie;
+          if (item.notas !== undefined) updatePayload.notas = item.notas;
+          if (item.fotoUrl !== undefined) updatePayload.fotoUrl = item.fotoUrl;
+
+          batch.update(docRef, updatePayload);
+          updated++;
+        }
+      } else {
+        // Create new tool
+        const newRef = doc(collection(db, 'herramientas'));
+        const newPayload: Herramienta = {
+          codigo: item.codigo,
+          nombre: item.nombre,
+          categoria: item.categoria,
+          marca: item.marca || '',
+          modelo: item.modelo || '',
+          numeroSerie: item.numeroSerie || '',
+          ubicacion: item.ubicacion || 'Almacén Central',
+          notas: item.notas || '',
+          estado: item.estado || 'Disponible',
+          fechaCreacion: now,
+          creadoPor: userId,
+        };
+        if (item.fotoUrl) newPayload.fotoUrl = item.fotoUrl;
+
+        batch.set(newRef, newPayload);
+        created++;
+      }
+    }
+
+    await batch.commit();
+  }
+
+  return { created, updated, skipped };
+};
+
+/**
+ * Bulk updates tool photos matched by toolId in Firestore
+ */
+export const bulkUpdateToolPhotos = async (
+  updates: Array<{ toolId: string; fotoUrl: string }>
+): Promise<number> => {
+  let updatedCount = 0;
+  const chunkSize = 200; // conservative batch chunk for image payloads
+  const now = new Date().toISOString();
+
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    const batch = writeBatch(db);
+
+    for (const item of chunk) {
+      const docRef = doc(db, 'herramientas', item.toolId);
+      batch.update(docRef, {
+        fotoUrl: item.fotoUrl,
+        fechaActualizacion: now,
+      });
+      updatedCount++;
+    }
+
+    await batch.commit();
+  }
+
+  return updatedCount;
+};
+
+// ==========================================
+// REGISTRO DE AUDITORÍA (AUDIT LOGS)
+// ==========================================
+
+export const registrarAuditoria = async (
+  registro: Omit<RegistroAuditoria, 'id' | 'fecha'>
+): Promise<string | undefined> => {
+  try {
+    const docRef = await addDoc(collection(db, 'auditoria'), {
+      ...registro,
+      fecha: new Date().toISOString(),
+    });
+    return docRef.id;
+  } catch (error) {
+    console.warn('No se pudo registrar la entrada de auditoría (offline o permisos):', error);
+    return undefined;
+  }
+};
+
+export const subscribeToAuditoria = (
+  onSuccess: (registros: RegistroAuditoria[]) => void,
+  limitCount = 50,
+  onError?: (err: unknown) => void
+) => {
+  const colRef = collection(db, 'auditoria');
+  const q = query(colRef, orderBy('fecha', 'desc'));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items: RegistroAuditoria[] = snapshot.docs.slice(0, limitCount).map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as RegistroAuditoria[];
+      onSuccess(items);
+    },
+    (error) => {
+      onError?.(error);
+      console.warn('Auditoría snapshot warning:', error);
+    }
+  );
 };
 
 // ==========================================
