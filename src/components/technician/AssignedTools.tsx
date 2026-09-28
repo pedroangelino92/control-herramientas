@@ -8,7 +8,6 @@ import {
   CheckCircle2, 
   RotateCcw, 
   Sparkles, 
-  Barcode,
   ArrowLeftRight,
   ExternalLink
 } from 'lucide-react';
@@ -18,14 +17,12 @@ import { getGoogleMapsUrl } from '../../services/geoService';
 interface AssignedToolsProps {
   assignedTools: Herramienta[];
   activeLoans: Prestamo[];
-  onViewBarcode: (tool: Herramienta) => void;
   onStartTransferInField?: (tool: Herramienta) => void;
 }
 
 export const AssignedTools: React.FC<AssignedToolsProps> = ({
   assignedTools,
   activeLoans,
-  onViewBarcode,
   onStartTransferInField,
 }) => {
   const now = new Date();
@@ -156,15 +153,7 @@ export const AssignedTools: React.FC<AssignedToolsProps> = ({
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-between gap-2 flex-wrap">
-                  <button
-                    onClick={() => onViewBarcode(tool)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-colors"
-                  >
-                    <Barcode className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Ficha / QR</span>
-                  </button>
-
+                <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-end gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => onStartTransferInField?.(tool)}

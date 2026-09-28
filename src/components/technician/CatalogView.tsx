@@ -7,11 +7,10 @@ import {
   CheckCircle2, 
   Clock, 
   AlertTriangle, 
-  Barcode,
-  Plus,
-  Check,
-  Layers,
-  Send,
+  Plus, 
+  Check, 
+  Layers, 
+  Send, 
   ArrowRight
 } from 'lucide-react';
 import { Herramienta, CondicionHerramienta } from '../../types';
@@ -24,7 +23,6 @@ interface CatalogViewProps {
   onAddToCartWithCondition?: (tool: Herramienta, condition: CondicionHerramienta, observations: string) => void;
   onRemoveFromCart: (toolId: string) => void;
   onOpenCartModal: () => void;
-  onViewBarcode?: (tool: Herramienta) => void;
 }
 
 export const CatalogView: React.FC<CatalogViewProps> = ({ 
@@ -34,7 +32,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   onAddToCartWithCondition,
   onRemoveFromCart,
   onOpenCartModal,
-  onViewBarcode 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -222,17 +219,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                 </div>
 
                 {/* Actions: Request / Add to Cart */}
-                <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-between gap-2">
-                  {onViewBarcode && (
-                    <button
-                      onClick={() => onViewBarcode(tool)}
-                      className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
-                      title="Ver etiqueta"
-                    >
-                      <Barcode className="w-4 h-4" />
-                    </button>
-                  )}
-
+                <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-end gap-2">
                   <div className="flex-1 flex justify-end">
                     {isAvailable ? (
                       isInCart ? (

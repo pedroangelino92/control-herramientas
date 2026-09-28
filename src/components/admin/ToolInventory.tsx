@@ -4,7 +4,6 @@ import {
   Plus, 
   Filter, 
   Wrench, 
-  Barcode, 
   Edit, 
   Trash2, 
   ArrowRight, 
@@ -34,7 +33,6 @@ interface ToolInventoryProps {
   categorias?: CategoriaItem[];
   onOpenNewToolModal: () => void;
   onEditTool: (tool: Herramienta) => void;
-  onViewBarcode: (tool: Herramienta) => void;
   onStartLoan: (tool: Herramienta) => void;
   onStartReturn: (tool: Herramienta) => void;
 }
@@ -44,7 +42,6 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
   categorias = [],
   onOpenNewToolModal,
   onEditTool,
-  onViewBarcode,
   onStartLoan,
   onStartReturn,
 }) => {
@@ -334,14 +331,6 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
                 <div className="mt-5 pt-3 border-t border-zinc-800 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => onViewBarcode(tool)}
-                      className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                      title="Ver etiqueta y código de barras"
-                      aria-label="Ver código de barras"
-                    >
-                      <Barcode className="w-4 h-4" />
-                    </button>
-                    <button
                       onClick={() => onEditTool(tool)}
                       className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                       title="Editar herramienta"
@@ -456,13 +445,6 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
                             Devolver
                           </button>
                         )}
-                        <button
-                          onClick={() => onViewBarcode(tool)}
-                          className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                          title="Ver Código"
-                        >
-                          <Barcode className="w-3.5 h-3.5" />
-                        </button>
                         <button
                           onClick={() => onEditTool(tool)}
                           className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"

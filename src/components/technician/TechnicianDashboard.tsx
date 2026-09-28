@@ -22,7 +22,6 @@ import { MySolicitudesView } from './MySolicitudesView';
 import { SolicitudRetiroModal } from './SolicitudRetiroModal';
 import { TransferInFieldModal } from './TransferInFieldModal';
 import { IncomingTransferModal } from './IncomingTransferModal';
-import { BarcodeModal } from '../common/BarcodeModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -60,10 +59,6 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [toolToTransfer, setToolToTransfer] = useState<Herramienta | null>(null);
   const [incomingTransferToReview, setIncomingTransferToReview] = useState<TransferenciaCampo | null>(null);
-
-  // Barcode modal state
-  const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
-  const [selectedToolForBarcode, setSelectedToolForBarcode] = useState<Herramienta | null>(null);
 
   // Filter tools assigned to this technician
   const assignedTools = herramientas.filter(
@@ -150,11 +145,6 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
   const handleClearCart = () => {
     setCart([]);
     setCartToolConditions({});
-  };
-
-  const handleOpenBarcode = (tool: Herramienta) => {
-    setSelectedToolForBarcode(tool);
-    setBarcodeModalOpen(true);
   };
 
   const handleOpenNewRetiro = () => {
@@ -331,7 +321,6 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
           <AssignedTools
             assignedTools={assignedTools}
             activeLoans={activeLoans}
-            onViewBarcode={handleOpenBarcode}
             onStartTransferInField={handleStartFieldTransfer}
           />
         )}
@@ -344,7 +333,6 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
             onAddToCartWithCondition={handleAddToCartWithCondition}
             onRemoveFromCart={handleRemoveFromCart}
             onOpenCartModal={() => setIsCartModalOpen(true)}
-            onViewBarcode={handleOpenBarcode}
           />
         )}
 
@@ -496,15 +484,6 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
         onClose={() => setIncomingTransferToReview(null)}
         transferencia={incomingTransferToReview}
         onSuccess={() => setActiveTab('assigned')}
-      />
-
-      <BarcodeModal
-        isOpen={barcodeModalOpen}
-        onClose={() => {
-          setBarcodeModalOpen(false);
-          setSelectedToolForBarcode(null);
-        }}
-        herramienta={selectedToolForBarcode}
       />
     </div>
   );

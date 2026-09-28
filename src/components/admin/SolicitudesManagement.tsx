@@ -61,7 +61,6 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
   // Authorization Modal state
   const [solicitudToAuthorize, setSolicitudToAuthorize] = useState<SolicitudRetiro | null>(null);
   const [observacionesEntrega, setObservacionesEntrega] = useState('');
-  const [condicionEntrega, setCondicionEntrega] = useState<CondicionHerramienta>('Bueno');
   const [perToolConditions, setPerToolConditions] = useState<
     Record<string, { condicion: CondicionHerramienta; observaciones: string }>
   >({});
@@ -80,7 +79,6 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
         };
       });
       setPerToolConditions(initialMap);
-      setCondicionEntrega('Bueno');
       setObservacionesEntrega('');
       setLoadingAdminGps(true);
       captureCurrentLocation()
@@ -91,20 +89,6 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
       setPerToolConditions({});
     }
   }, [solicitudToAuthorize]);
-
-  const handleApplyConditionToAll = (newCond: CondicionHerramienta) => {
-    setCondicionEntrega(newCond);
-    setPerToolConditions((prev) => {
-      const updated = { ...prev };
-      Object.keys(updated).forEach((id) => {
-        updated[id] = {
-          ...updated[id],
-          condicion: newCond,
-        };
-      });
-      return updated;
-    });
-  };
 
   const handleUpdateToolCondition = (toolId: string, cond: CondicionHerramienta) => {
     setPerToolConditions((prev) => ({
@@ -207,7 +191,7 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
         currentUser?.uid || '',
         adminNombre,
         observacionesEntrega.trim(),
-        condicionEntrega,
+        'Bueno',
         adminGeo,
         perToolConditions
       );
@@ -709,38 +693,6 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
                   <span className="text-zinc-300 italic">"{solicitudToAuthorize.motivoUso}"</span>
                 </div>
               )}
-            </div>
-
-            {/* Bulk condition action bar */}
-            <div className="p-3 bg-zinc-950/70 border border-zinc-800/90 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="font-semibold text-zinc-200">Condición general / Rápida:</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={condicionEntrega}
-                  onChange={(e) => {
-                    const newCond = e.target.value as CondicionHerramienta;
-                    setCondicionEntrega(newCond);
-                  }}
-                  className="px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
-                >
-                  <option value="Excelente">Excelente (Como nueva)</option>
-                  <option value="Bueno">Bueno (Operativa al 100%)</option>
-                  <option value="Desgaste normal">Desgaste normal (Con marcas de uso)</option>
-                  <option value="Falta mantenimiento">Falta mantenimiento (Revisión)</option>
-                  <option value="Dañada / Requiere servicio">Dañada / Requiere servicio</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => handleApplyConditionToAll(condicionEntrega)}
-                  className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-bold transition-all border border-zinc-700 shrink-0"
-                  title="Asigna este estado a todas las herramientas de la lista"
-                >
-                  Aplicar a todas
-                </button>
-              </div>
             </div>
 
             {/* Individual Tool Inspection and Condition Editor */}

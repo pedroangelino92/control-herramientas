@@ -9,7 +9,6 @@ import {
   Plus, 
   Layers, 
   Database,
-  ScanBarcode,
   TrendingUp,
   ShieldCheck,
   AlertCircle

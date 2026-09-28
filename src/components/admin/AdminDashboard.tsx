@@ -7,7 +7,6 @@ import {
   Plus, 
   Clock, 
   ShieldCheck, 
-  ScanBarcode, 
   Layers, 
   Sparkles, 
   AlertCircle,
@@ -24,7 +23,6 @@ import { GeoAuditView } from './GeoAuditView';
 import { ToolFormModal } from './ToolFormModal';
 import { NewLoanModal } from './NewLoanModal';
 import { ReturnLoanModal } from './ReturnLoanModal';
-import { BarcodeModal } from '../common/BarcodeModal';
 
 interface AdminDashboardProps {
   herramientas: Herramienta[];
@@ -61,9 +59,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [prestamoToReturn, setPrestamoToReturn] = useState<Prestamo | null>(null);
 
-  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
-  const [selectedToolForBarcode, setSelectedToolForBarcode] = useState<Herramienta | null>(null);
-
   const pendingUsersCount = usuarios.filter((u) => u.estado === 'pendiente').length;
   const pendingSolicitudesCount = solicitudes.filter((s) => s.estado === 'Pendiente').length;
   const pendingTransfersCount = transferencias.filter((t) => t.estado === 'PendienteConfirmacion').length;
@@ -71,11 +66,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleOpenEdit = (tool: Herramienta) => {
     setToolToEdit(tool);
     setIsToolModalOpen(true);
-  };
-
-  const handleOpenBarcode = (tool: Herramienta) => {
-    setSelectedToolForBarcode(tool);
-    setIsBarcodeModalOpen(true);
   };
 
   const handleStartLoan = (tool: Herramienta) => {
@@ -130,7 +120,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               setIsToolModalOpen(true);
             }}
             onEditTool={handleOpenEdit}
-            onViewBarcode={handleOpenBarcode}
             onStartLoan={handleStartLoan}
             onStartReturn={handleStartReturn}
           />
@@ -198,15 +187,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           setPrestamoToReturn(null);
         }}
         prestamo={prestamoToReturn}
-      />
-
-      <BarcodeModal
-        isOpen={isBarcodeModalOpen}
-        onClose={() => {
-          setIsBarcodeModalOpen(false);
-          setSelectedToolForBarcode(null);
-        }}
-        herramienta={selectedToolForBarcode}
       />
 
       {/* ========================================================================= */}

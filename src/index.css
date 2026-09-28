@@ -21,23 +21,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
 }
-
-/* Print styling for barcode label printouts */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #printable-label, #printable-label * {
-    visibility: visible;
-  }
-  #printable-label {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 20px;
-    background: white !important;
-    color: black !important;
-  }
-}

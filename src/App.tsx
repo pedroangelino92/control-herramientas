@@ -14,7 +14,6 @@ import { PendingApprovalView } from './components/auth/PendingApprovalView';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { TechnicianDashboard } from './components/technician/TechnicianDashboard';
 import { QuickScannerModal } from './components/common/QuickScannerModal';
-import { BarcodeModal } from './components/common/BarcodeModal';
 import { PermissionsPromptModal } from './components/common/PermissionsPromptModal';
 import { NotificationDrawerModal } from './components/common/NotificationDrawerModal';
 import { 
@@ -69,7 +68,6 @@ const MainContent: React.FC = () => {
   
   const [isQuickScannerOpen, setIsQuickScannerOpen] = useState(false);
   const [scannedTool, setScannedTool] = useState<Herramienta | null>(null);
-  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
 
   // Phone / PWA permission modals state
   const [isPermissionsPromptOpen, setIsPermissionsPromptOpen] = useState(false);
@@ -164,9 +162,8 @@ const MainContent: React.FC = () => {
     };
   }, [currentUser, isAdmin]);
 
-  const handleSelectScannedTool = (tool: Herramienta, action?: 'view' | 'loan' | 'return') => {
+  const handleSelectScannedTool = (tool: Herramienta) => {
     setScannedTool(tool);
-    setIsBarcodeModalOpen(true);
   };
 
   // Loading Screen
@@ -315,16 +312,6 @@ const MainContent: React.FC = () => {
         onClose={() => setIsQuickScannerOpen(false)}
         herramientas={herramientas}
         onSelectTool={handleSelectScannedTool}
-      />
-
-      {/* Barcode Modal */}
-      <BarcodeModal
-        isOpen={isBarcodeModalOpen}
-        onClose={() => {
-          setIsBarcodeModalOpen(false);
-          setScannedTool(null);
-        }}
-        herramienta={scannedTool}
       />
 
       {/* Permissions Prompt Modal for Mobile / PWA */}
