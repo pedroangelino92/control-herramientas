@@ -10,6 +10,7 @@ import {
   orderBy,
   where,
   getDocs,
+  getDoc,
   writeBatch
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase/config';
@@ -25,7 +26,8 @@ import {
   HerramientaSolicitada,
   TransferenciaCampo,
   EstadoTransferenciaCampo,
-  GeoLocationPoint
+  GeoLocationPoint,
+  SUPERADMIN_EMAIL
 } from '../types';
 import { 
   captureCurrentLocation, 
@@ -196,6 +198,15 @@ export interface NewMultiplePrestamoInput {
 }
 
 export const registerMultiplePrestamos = async (input: NewMultiplePrestamoInput): Promise<string[]> => {
+  // Non-superadmin cannot auto-loan tools directly to themselves
+  if (input.adminUid === input.tecnico.uid) {
+    const adminDoc = await getDoc(doc(db, 'usuarios', input.adminUid));
+    const adminEmail = (adminDoc.data()?.email || '').toLowerCase().trim();
+    if (adminEmail !== SUPERADMIN_EMAIL.toLowerCase()) {
+      throw new Error('Auto-asignación denegada: Un administrador no puede auto-asignarse herramientas directamente. Debes ingresar como técnico y generar una Solicitud de Retiro para que otro administrador o el superadmin la autorice.');
+    }
+  }
+
   const batch = writeBatch(db);
   const now = new Date().toISOString();
   const ids: string[] = [];
@@ -255,6 +266,15 @@ export interface ReturnPrestamoInput {
 }
 
 export const returnHerramientaLoan = async (input: ReturnPrestamoInput): Promise<void> => {
+  // Non-superadmin cannot auto-receive tool returns they withdrew
+  if (input.prestamo.tecnicoUid === input.recibidoPorUid) {
+    const adminDoc = await getDoc(doc(db, 'usuarios', input.recibidoPorUid));
+    const adminEmail = (adminDoc.data()?.email || '').toLowerCase().trim();
+    if (adminEmail !== SUPERADMIN_EMAIL.toLowerCase()) {
+      throw new Error('Auto-recepción denegada: No puedes auto-recibir la devolución de una herramienta que retiraste tú mismo. Otro administrador o el superadmin debe inspeccionarla físicamente y recibirla en almacén.');
+    }
+  }
+
   const batch = writeBatch(db);
   const prestamoRef = doc(db, 'prestamos', input.prestamo.id!);
   const herramientaRef = doc(db, 'herramientas', input.prestamo.herramientaId);
@@ -474,6 +494,15 @@ export const autorizarSolicitudRetiro = async (
   adminGeo?: GeoLocationPoint | null,
   toolSpecificConditions?: Record<string, { condicion: CondicionHerramienta; observaciones?: string }>
 ): Promise<void> => {
+  // Non-superadmin cannot auto-approve their own request
+  if (solicitud.tecnicoUid === adminUid) {
+    const adminDoc = await getDoc(doc(db, 'usuarios', adminUid));
+    const adminEmail = (adminDoc.data()?.email || '').toLowerCase().trim();
+    if (adminEmail !== SUPERADMIN_EMAIL.toLowerCase()) {
+      throw new Error('Auto-aprobación denegada: Un administrador no puede auto-aprobarse una solicitud de retiro. Debe ser autorizada por otro administrador o el superadmin.');
+    }
+  }
+
   const batch = writeBatch(db);
   const now = new Date().toISOString();
   const solicitudRef = doc(db, 'solicitudes_retiro', solicitud.id!);
@@ -601,6 +630,18 @@ export const rechazarSolicitudRetiro = async (
 ): Promise<void> => {
   try {
     const docRef = doc(db, 'solicitudes_retiro', solicitudId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const solData = docSnap.data();
+      if (solData.tecnicoUid === adminUid) {
+        const adminDoc = await getDoc(doc(db, 'usuarios', adminUid));
+        const adminEmail = (adminDoc.data()?.email || '').toLowerCase().trim();
+        if (adminEmail !== SUPERADMIN_EMAIL.toLowerCase()) {
+          throw new Error('No puedes rechazar tu propia solicitud desde este panel. Si deseas cancelarla, hazlo desde tu historial de solicitudes.');
+        }
+      }
+    }
+
     await updateDoc(docRef, {
       estado: 'Rechazada',
       fechaRespuesta: new Date().toISOString(),

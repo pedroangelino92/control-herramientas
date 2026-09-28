@@ -19,7 +19,11 @@ import {
   MapPin,
   ExternalLink,
   Ban,
-  Trash2
+  Trash2,
+  Lock,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { SolicitudRetiro, Herramienta, CondicionHerramienta, GeoLocationPoint, SUPERADMIN_EMAIL } from '../../types';
 import { autorizarSolicitudRetiro, rechazarSolicitudRetiro, deleteSolicitudRetiro } from '../../services/toolService';
@@ -45,6 +49,8 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
   const [filterState, setFilterState] = useState<'all' | 'Pendiente' | 'Aprobada' | 'Rechazada'>('Pendiente');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   // Deletion state
   const [solicitudToDelete, setSolicitudToDelete] = useState<SolicitudRetiro | null>(null);
@@ -145,11 +151,26 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
     });
   }, [solicitudes, filterState, searchTerm]);
 
+  const totalPages = Math.ceil(filteredSolicitudes.length / itemsPerPage) || 1;
+  const paginatedSolicitudes = filteredSolicitudes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const pendingCount = solicitudes.filter((s) => s.estado === 'Pendiente').length;
 
   // Handle Authorize
   const handleConfirmAuthorize = async () => {
     if (!solicitudToAuthorize) return;
+
+    const isOwn = 
+      solicitudToAuthorize.tecnicoUid === currentUser?.uid ||
+      (!!solicitudToAuthorize.tecnicoEmail && !!currentUser?.email && solicitudToAuthorize.tecnicoEmail.toLowerCase() === currentUser.email.toLowerCase());
+
+    if (isOwn && !isSuperAdmin) {
+      showToast('error', 'Auto-aprobación no permitida', 'No puedes autorizar tu propia solicitud de retiro. Debe ser aprobada por otro administrador o el superadmin.');
+      return;
+    }
 
     let adminGeo = adminGps;
     if (!adminGeo) {
@@ -280,7 +301,10 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Buscar por Nro solicitud, técnico o herramienta..."
             className="w-full pl-8 pr-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
           />
@@ -289,7 +313,10 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
         {/* Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
           <button
-            onClick={() => setFilterState('Pendiente')}
+            onClick={() => {
+              setFilterState('Pendiente');
+              setCurrentPage(1);
+            }}
             className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1 shrink-0 ${
               filterState === 'Pendiente'
                 ? 'bg-amber-500 text-black font-black shadow-sm'
@@ -301,7 +328,10 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
           </button>
 
           <button
-            onClick={() => setFilterState('all')}
+            onClick={() => {
+              setFilterState('all');
+              setCurrentPage(1);
+            }}
             className={`px-3 py-1 rounded-lg transition-colors shrink-0 ${
               filterState === 'all'
                 ? 'bg-amber-500 text-black font-black shadow-sm'
@@ -312,7 +342,10 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
           </button>
 
           <button
-            onClick={() => setFilterState('Aprobada')}
+            onClick={() => {
+              setFilterState('Aprobada');
+              setCurrentPage(1);
+            }}
             className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1 shrink-0 ${
               filterState === 'Aprobada'
                 ? 'bg-amber-500 text-black font-black shadow-sm'
@@ -324,7 +357,10 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
           </button>
 
           <button
-            onClick={() => setFilterState('Rechazada')}
+            onClick={() => {
+              setFilterState('Rechazada');
+              setCurrentPage(1);
+            }}
             className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1 shrink-0 ${
               filterState === 'Rechazada'
                 ? 'bg-amber-500 text-black font-black shadow-sm'
@@ -348,11 +384,16 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredSolicitudes.map((sol) => {
+          {paginatedSolicitudes.map((sol) => {
             const isPending = sol.estado === 'Pendiente';
             const isApproved = sol.estado === 'Aprobada';
             const isRejected = sol.estado === 'Rechazada';
             const isExpanded = expandedId === sol.id;
+
+            const isOwnSolicitud = 
+              sol.tecnicoUid === currentUser?.uid || 
+              (!!sol.tecnicoEmail && !!currentUser?.email && sol.tecnicoEmail.toLowerCase() === currentUser.email.toLowerCase());
+            const canAuthorizeThis = isSuperAdmin || !isOwnSolicitud;
 
             return (
               <div
@@ -503,36 +544,60 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
 
                 {/* 5. Mobile-first Action Buttons: NEVER OVERFLOW! */}
                 {isPending && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-zinc-800/90">
-                    <button
-                      type="button"
-                      onClick={() => setSolicitudToAuthorize(sol)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all shadow flex items-center justify-center gap-1.5 active:scale-95"
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Autorizar y Entregar ({sol.cantidadTotal})</span>
-                    </button>
+                  <>
+                    {!canAuthorizeThis ? (
+                      <div className="pt-2 border-t border-zinc-800/90 space-y-2">
+                        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
+                          <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span className="leading-snug">
+                            <strong>Tu solicitud:</strong> Por política de control, otro administrador o el superadmin debe autorizar la entrega.
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled
+                            className="flex-1 py-2 px-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-zinc-500 text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed opacity-75"
+                            title="No puedes auto-aprobar tu propia solicitud"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>Auto-aprobación bloqueada</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 pt-2 border-t border-zinc-800/90">
+                        <button
+                          type="button"
+                          onClick={() => setSolicitudToAuthorize(sol)}
+                          className="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all shadow flex items-center justify-center gap-1.5 active:scale-95"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Autorizar y Entregar ({sol.cantidadTotal})</span>
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setSolicitudToReject(sol)}
-                      className="py-2 px-3 rounded-xl bg-zinc-800 hover:bg-rose-950/40 border border-zinc-700 hover:border-rose-500/50 text-zinc-300 hover:text-rose-300 text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0 active:scale-95"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Rechazar</span>
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => setSolicitudToReject(sol)}
+                          className="py-2 px-3 rounded-xl bg-zinc-800 hover:bg-rose-950/40 border border-zinc-700 hover:border-rose-500/50 text-zinc-300 hover:text-rose-300 text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0 active:scale-95"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Rechazar</span>
+                        </button>
 
-                    {isSuperAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setSolicitudToDelete(sol)}
-                        className="p-2 rounded-xl bg-zinc-800 hover:bg-rose-950/40 border border-zinc-700 hover:border-rose-500/50 text-zinc-400 hover:text-rose-400 text-xs font-bold transition-all flex items-center justify-center shrink-0 active:scale-95"
-                        title="Eliminar solicitud permanentemente (Solo admin)"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        {isSuperAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => setSolicitudToDelete(sol)}
+                            className="p-2 rounded-xl bg-zinc-800 hover:bg-rose-950/40 border border-zinc-700 hover:border-rose-500/50 text-zinc-400 hover:text-rose-400 text-xs font-bold transition-all flex items-center justify-center shrink-0 active:scale-95"
+                            title="Eliminar solicitud permanentemente (Solo admin)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {!isPending && isSuperAdmin && (
@@ -551,6 +616,38 @@ export const SolicitudesManagement: React.FC<SolicitudesManagementProps> = ({
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-zinc-800 text-xs">
+              <span className="text-zinc-500 text-[11px]">
+                Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredSolicitudes.length)} de {filteredSolicitudes.length} solicitudes
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 text-xs"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Anterior</span>
+                </button>
+                <span className="px-2 text-zinc-400 font-bold">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 text-xs"
+                >
+                  <span>Siguiente</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

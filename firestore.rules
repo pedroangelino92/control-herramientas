@@ -6,17 +6,20 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isHardcodedAdmin() {
+    function isSuperAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'pedroangelino92@gmail.com'
       );
     }
     
     function isAdmin() {
-      return isHardcodedAdmin() || (
+      return isSuperAdmin() || (
         isSignedIn() && 
         exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin' &&
+        (
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin' ||
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'superadmin'
+        ) &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.estado == 'activo'
       );
     }
@@ -42,7 +45,7 @@ service cloud.firestore {
       
       // Permitir al usuario crear su propio perfil inicial con rol 'tecnico' y estado 'pendiente' (salvo el admin inicial)
       allow create: if isUserSelf(userId) && (
-        isHardcodedAdmin() || (
+        isSuperAdmin() || (
           request.resource.data.rol == 'tecnico' &&
           request.resource.data.estado == 'pendiente'
         )
@@ -56,7 +59,7 @@ service cloud.firestore {
       );
       
       // Solo el superadministrador pedroangelino92@gmail.com puede eliminar cuentas
-      allow delete: if isHardcodedAdmin();
+      allow delete: if isSuperAdmin();
     }
 
     // Colección de Herramientas
@@ -67,8 +70,8 @@ service cloud.firestore {
       // Crear y editar: Administradores o técnicos aprobados durante préstamos
       allow create, update: if isSignedIn();
       
-      // Eliminar: Solo el admin pedroangelino92@gmail.com
-      allow delete: if isHardcodedAdmin();
+      // Eliminar: Solo el superadmin pedroangelino92@gmail.com
+      allow delete: if isSuperAdmin();
     }
 
     // Colección de Categorías de Herramientas
@@ -84,26 +87,44 @@ service cloud.firestore {
       // Lectura para usuarios autenticados
       allow read: if isSignedIn();
       
-      // Crear y actualizar préstamos / devoluciones
-      allow create, update: if isSignedIn();
+      // Crear préstamos
+      allow create: if isSignedIn();
+
+      // Actualizar préstamos / devoluciones:
+      // Regla estricta: un admin no puede auto-recibirse la devolución de una herramienta que retiró él mismo (salvo el superadmin)
+      allow update: if isSuperAdmin() || (
+        isAdmin() && (
+          request.resource.data.estado != 'Devuelto' || request.auth.uid != resource.data.tecnicoUid
+        )
+      ) || (
+        // Técnicos actualizando notas o estados de transferencia
+        isSignedIn()
+      );
       
-      // Eliminar registros de préstamos: Solo el admin pedroangelino92@gmail.com
-      allow delete: if isHardcodedAdmin();
+      // Eliminar registros de préstamos: Solo el superadmin pedroangelino92@gmail.com
+      allow delete: if isSuperAdmin();
     }
 
     // Colección de Solicitudes de Retiro
     match /solicitudes_retiro/{solicitudId} {
-      // Lectura para usuarios autenticados (técnicos ven sus solicitudes, admins ven todas)
+      // Lectura para usuarios autenticados
       allow read: if isSignedIn();
       
       // Crear: técnicos autenticados solicitan herramientas
       allow create: if isSignedIn();
       
       // Actualizar: Administradores autorizan/rechazan, técnicos pueden cancelar si está pendiente
-      allow update: if isSignedIn();
+      // Regla estricta: un admin NO puede auto-aprobarse una solicitud de retiro (salvo el superadmin pedroangelino92)
+      allow update: if isSuperAdmin() || (
+        isAdmin() && (
+          request.resource.data.estado != 'Aprobada' || request.auth.uid != resource.data.tecnicoUid
+        )
+      ) || (
+        isSignedIn() && request.auth.uid == resource.data.tecnicoUid && request.resource.data.estado == 'Cancelada'
+      );
 
-      // Eliminar: Solo el admin pedroangelino92@gmail.com
-      allow delete: if isHardcodedAdmin();
+      // Eliminar: Solo el superadmin pedroangelino92@gmail.com
+      allow delete: if isSuperAdmin();
     }
 
     // Colección de Transferencias en Campo entre Técnicos
@@ -114,16 +135,16 @@ service cloud.firestore {
       // Crear traspaso en campo y confirmar recepción
       allow create, update: if isSignedIn();
       
-      // Eliminar: Solo el admin pedroangelino92@gmail.com
-      allow delete: if isHardcodedAdmin();
+      // Eliminar: Solo el superadmin pedroangelino92@gmail.com
+      allow delete: if isSuperAdmin();
     }
 
     // Colección de Notificaciones del Sistema
     match /notificaciones/{notificacionId} {
       // Lectura, creación y actualización de estado de lectura para usuarios autenticados
       allow read, create, update: if isSignedIn();
-      // Eliminar: Solo el admin pedroangelino92@gmail.com
-      allow delete: if isHardcodedAdmin();
+      // Eliminar: Solo el superadmin pedroangelino92@gmail.com
+      allow delete: if isSuperAdmin();
     }
   }
 }

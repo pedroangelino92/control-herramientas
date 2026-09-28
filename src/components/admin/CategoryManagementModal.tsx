@@ -10,10 +10,17 @@ import {
   Lock, 
   Search,
   Layers,
-  Wrench
+  Wrench,
+  RotateCcw,
+  Sparkles
 } from 'lucide-react';
 import { CategoriaItem, Herramienta } from '../../types';
-import { createCategoria, updateCategoria, deleteCategoria } from '../../services/categoryService';
+import { 
+  createCategoria, 
+  updateCategoria, 
+  deleteCategoria, 
+  seedDefaultCategorias 
+} from '../../services/categoryService';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
@@ -39,6 +46,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSeedingDefaults, setIsSeedingDefaults] = useState(false);
 
   // Deletion state
   const [categoryToDelete, setCategoryToDelete] = useState<CategoriaItem | null>(null);
@@ -122,6 +130,18 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       showToast('error', 'Error al eliminar', err.message || 'No se pudo eliminar la categoría.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRestoreDefaults = async () => {
+    setIsSeedingDefaults(true);
+    try {
+      await seedDefaultCategorias(userProfile?.nombre || currentUser?.email || 'Administrador');
+      showToast('success', 'Categorías cargadas', 'Se han cargado las categorías estándar predeterminadas.');
+    } catch (err: any) {
+      showToast('error', 'Error al restaurar', err.message || 'No se pudieron cargar las categorías.');
+    } finally {
+      setIsSeedingDefaults(false);
     }
   };
 
@@ -249,8 +269,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           </form>
 
           {/* Search bar inside list */}
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="relative flex-1">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
               <input
                 type="text"
@@ -260,14 +280,49 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                 className="w-full pl-9 pr-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
-            <span className="text-xs text-zinc-400 shrink-0 font-medium">
-              {filteredCategories.length} categorías
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-400 shrink-0 font-medium">
+                {filteredCategories.length} {filteredCategories.length === 1 ? 'categoría' : 'categorías'}
+              </span>
+              {categorias.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleRestoreDefaults}
+                  disabled={isSeedingDefaults}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-amber-300 bg-zinc-800/80 hover:bg-zinc-800 rounded-lg border border-zinc-700/60 transition-colors"
+                  title="Cargar categorías estándar que falten"
+                >
+                  <RotateCcw className={`w-3 h-3 ${isSeedingDefaults ? 'animate-spin text-amber-400' : ''}`} />
+                  <span className="hidden sm:inline">Restaurar estándar</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Categories List */}
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {filteredCategories.length === 0 ? (
+            {categorias.length === 0 ? (
+              <div className="p-6 text-center bg-zinc-950/90 rounded-xl border border-dashed border-zinc-800 space-y-3">
+                <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto text-amber-400">
+                  <Tags className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-200">No hay categorías registradas</h4>
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1">
+                    Has eliminado todas las categorías. Puedes agregar tus categorías personalizadas usando el formulario superior, o si prefieres, cargar las categorías predeterminadas del sistema.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestoreDefaults}
+                  disabled={isSeedingDefaults}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 hover:text-amber-300 text-xs font-semibold rounded-xl border border-zinc-700 transition-all disabled:opacity-50 active:scale-95"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isSeedingDefaults ? 'animate-spin' : ''}`} />
+                  <span>{isSeedingDefaults ? 'Cargando categorías...' : 'Cargar categorías por defecto'}</span>
+                </button>
+              </div>
+            ) : filteredCategories.length === 0 ? (
               <div className="p-8 text-center bg-zinc-950 rounded-xl border border-dashed border-zinc-800">
                 <Tags className="w-8 h-8 text-zinc-600 mx-auto mb-2 opacity-50" />
                 <p className="text-xs text-zinc-400 font-semibold">

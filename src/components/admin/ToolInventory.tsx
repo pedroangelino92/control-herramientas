@@ -95,7 +95,12 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
     }
   };
 
-  const categories = Array.from(new Set(herramientas.map((h) => h.categoria))).filter(Boolean);
+  const categories = Array.from(
+    new Set([
+      ...categorias.map((c) => c.nombre),
+      ...herramientas.map((h) => h.categoria),
+    ])
+  ).filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -134,9 +139,20 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
             </button>
           </div>
 
+          {/* Manage Categories Button */}
+          <button
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl border border-zinc-700/60 shadow-sm transition-all shrink-0 active:scale-95"
+            title="Administrar categorías del almacén"
+          >
+            <Tags className="w-4 h-4 text-amber-400" />
+            <span className="hidden sm:inline">Gestionar Categorías</span>
+            <span className="sm:hidden">Categorías</span>
+          </button>
+
           <button
             onClick={onOpenNewToolModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0 active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Nueva Herramienta</span>
@@ -455,6 +471,14 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
           </div>
         </div>
       )}
+
+      {/* Category Management Modal */}
+      <CategoryManagementModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        categorias={categorias}
+        herramientas={herramientas}
+      />
 
       {/* Confirmation Modal for deletion */}
       <ConfirmationModal

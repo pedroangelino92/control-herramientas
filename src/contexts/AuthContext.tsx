@@ -15,16 +15,17 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from '../firebase/config';
-import { Usuario, RolUsuario, EstadoUsuario } from '../types';
+import { Usuario, RolUsuario, EstadoUsuario, SUPERADMIN_EMAIL } from '../types';
 
 const ADMIN_EMAILS = [
-  'pedroangelino92@gmail.com'
+  SUPERADMIN_EMAIL.toLowerCase()
 ];
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
   userProfile: Usuario | null;
   loading: boolean;
+  isSuperAdmin: boolean;
   isAdmin: boolean;
   isTechnician: boolean;
   isPending: boolean;
@@ -49,18 +50,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const syncUserProfile = async (user: FirebaseUser, customName?: string, customPhone?: string): Promise<Usuario> => {
     const userDocRef = doc(db, 'usuarios', user.uid);
     const userEmail = (user.email || '').toLowerCase().trim();
-    const isAutoAdmin = ADMIN_EMAILS.includes(userEmail);
+    const isSuperAdminEmail = userEmail === SUPERADMIN_EMAIL.toLowerCase();
+    const isAutoAdmin = ADMIN_EMAILS.includes(userEmail) || isSuperAdminEmail;
 
     try {
       const docSnap = await getDoc(userDocRef);
       if (docSnap.exists()) {
         const existingData = docSnap.data() as Usuario;
-        // If it is one of the hardcoded admin emails but wasn't marked admin/activo, upgrade it
-        if (isAutoAdmin && (existingData.rol !== 'admin' || existingData.estado !== 'activo')) {
+        // If it is the superadmin or auto-admin, ensure appropriate role and active status
+        const targetRole: RolUsuario = isSuperAdminEmail ? 'superadmin' : 'admin';
+        if (isAutoAdmin && (existingData.rol !== targetRole || existingData.estado !== 'activo')) {
           const updated: Partial<Usuario> = {
-            rol: 'admin',
+            rol: targetRole,
             estado: 'activo',
-            aprobadoPor: 'Sistema (Auto-Admin)',
+            aprobadoPor: 'Sistema (Super-Admin)',
             fechaAprobacion: new Date().toISOString()
           };
           await setDoc(userDocRef, updated, { merge: true });
@@ -69,18 +72,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return existingData;
       } else {
         // Create initial user profile safely without undefined values
+        const targetRole: RolUsuario = isSuperAdminEmail ? 'superadmin' : (isAutoAdmin ? 'admin' : 'tecnico');
         const newProfile: Usuario = {
           uid: user.uid,
           email: userEmail,
-          nombre: customName || user.displayName || userEmail.split('@')[0] || 'Usuario',
-          rol: (isAutoAdmin ? 'admin' : 'tecnico') as RolUsuario,
+          nombre: customName || user.displayName || userEmail.split('@')[0] || (isSuperAdminEmail ? 'Pedro Angelino' : 'Usuario'),
+          rol: targetRole,
           estado: (isAutoAdmin ? 'activo' : 'pendiente') as EstadoUsuario,
           fechaCreacion: new Date().toISOString(),
           telefono: customPhone || '',
         };
 
         if (isAutoAdmin) {
-          newProfile.aprobadoPor = 'Sistema (Auto-Admin)';
+          newProfile.aprobadoPor = isSuperAdminEmail ? 'Sistema (Super-Admin)' : 'Sistema (Auto-Admin)';
           newProfile.fechaAprobacion = new Date().toISOString();
         }
 
@@ -212,12 +216,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const userEmail = (currentUser?.email || '').toLowerCase();
-  const isAutoAdmin = ADMIN_EMAILS.includes(userEmail);
+  const userEmail = (currentUser?.email || '').toLowerCase().trim();
+  const isSuperAdmin = userEmail === SUPERADMIN_EMAIL.toLowerCase();
+  const isAutoAdmin = ADMIN_EMAILS.includes(userEmail) || isSuperAdmin;
 
   // Role and status resolution
-  const isAdmin = isAutoAdmin || (userProfile?.rol === 'admin' && userProfile?.estado === 'activo');
-  const isTechnician = !isAutoAdmin && userProfile?.rol === 'tecnico' && userProfile?.estado === 'activo';
+  const isAdmin = isSuperAdmin || ((userProfile?.rol === 'admin' || userProfile?.rol === 'superadmin') && userProfile?.estado === 'activo');
+  const isTechnician = !isAdmin && userProfile?.rol === 'tecnico' && userProfile?.estado === 'activo';
   const isPending = !isAutoAdmin && (userProfile?.estado === 'pendiente' || !userProfile?.estado);
   const isRejected = !isAutoAdmin && userProfile?.estado === 'rechazado';
 
@@ -227,6 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         userProfile,
         loading,
+        isSuperAdmin,
         isAdmin,
         isTechnician,
         isPending,

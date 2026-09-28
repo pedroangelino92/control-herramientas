@@ -29,13 +29,15 @@ import {
   checkNotificationPermission, 
   subscribeToMisNotificaciones 
 } from './services/notificationService';
+import { subscribeToCategorias } from './services/categoryService';
 import { 
   Herramienta, 
   Prestamo, 
   Usuario, 
   SolicitudRetiro, 
   TransferenciaCampo,
-  NotificacionSistema 
+  NotificacionSistema,
+  CategoriaItem
 } from './types';
 import { Wrench, ShieldAlert, LogOut, Loader2, ShieldCheck } from 'lucide-react';
 
@@ -61,6 +63,7 @@ const MainContent: React.FC = () => {
   const [solicitudes, setSolicitudes] = useState<SolicitudRetiro[]>([]);
   const [transferencias, setTransferencias] = useState<TransferenciaCampo[]>([]);
   const [notificaciones, setNotificaciones] = useState<NotificacionSistema[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
   
   const [isQuickScannerOpen, setIsQuickScannerOpen] = useState(false);
   const [scannedTool, setScannedTool] = useState<Herramienta | null>(null);
@@ -121,6 +124,11 @@ const MainContent: React.FC = () => {
       (err) => console.error('Error fetching usuarios:', err)
     );
 
+    const unsubCategories = subscribeToCategorias(
+      (items) => setCategorias(items),
+      (err) => console.error('Error fetching categorias:', err)
+    );
+
     const unsubNotifs = subscribeToMisNotificaciones(
       currentUser.uid,
       isAdmin,
@@ -149,6 +157,7 @@ const MainContent: React.FC = () => {
       unsubSolicitudes();
       unsubTransferencias();
       unsubUsers();
+      unsubCategories();
       unsubNotifs();
     };
   }, [currentUser, isAdmin]);
@@ -273,6 +282,7 @@ const MainContent: React.FC = () => {
             usuarios={usuarios}
             solicitudes={solicitudes}
             transferencias={transferencias}
+            categorias={categorias}
             onOpenQuickScanner={() => setIsQuickScannerOpen(true)}
             onSwitchToTechnician={() => setAdminViewMode('technician')}
           />

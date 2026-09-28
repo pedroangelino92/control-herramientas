@@ -110,12 +110,28 @@
         "observaciones": { "type": "string" }
       },
       "required": ["nroTransferencia", "herramientaId", "tecnicoEmisorUid", "tecnicoReceptorUid", "fechaInicio", "estado"]
+    },
+    "Categoria": {
+      "title": "Categoria",
+      "description": "Categoría de herramientas del almacén gestionada por administradores",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "fechaCreacion": { "type": "string" },
+        "creadoPor": { "type": "string" }
+      },
+      "required": ["nombre"]
     }
   },
   "firestore": {
     "usuarios": {
       "schema": "Usuario",
       "description": "Usuarios del sistema con roles y estado de aprobación"
+    },
+    "categorias": {
+      "schema": "Categoria",
+      "description": "Categorías de herramientas del almacén administrables"
     },
     "herramientas": {
       "schema": "Herramienta",

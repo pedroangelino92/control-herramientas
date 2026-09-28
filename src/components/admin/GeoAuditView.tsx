@@ -156,6 +156,14 @@ export const GeoAuditView: React.FC<GeoAuditViewProps> = ({
   const totalPresential = transactions.filter((t) => t.aprobadoEnPresencia === true).length;
   const totalFieldTransfers = transferencias.length;
 
+  const handleCardClick = (type: string) => {
+    if (type === 'all') {
+      setFilterType('all');
+    } else {
+      setFilterType((prev) => (prev === type ? 'all' : type));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -166,107 +174,150 @@ export const GeoAuditView: React.FC<GeoAuditViewProps> = ({
             Trazabilidad & Auditoría de Geolocalización
           </h2>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Registro satelital GPS de retiros, entregas presenciales y traspasos mano a mano en campo
+            Registro satelital GPS de retiros, entregas presenciales y traspasos mano a mano en campo. Haz clic en las tarjetas para filtrar.
           </p>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Interactive Filters) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-md">
-          <div className="flex items-center justify-between text-zinc-500 mb-1">
-            <span className="text-[11px] font-bold uppercase">Transacciones GPS</span>
-            <MapPin className="w-4 h-4 text-amber-400" />
+        {/* Card 1: Todas las Transacciones */}
+        <button
+          type="button"
+          onClick={() => handleCardClick('all')}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 shadow-md cursor-pointer border active:scale-[0.98] ${
+            filterType === 'all'
+              ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/50 shadow-amber-500/10'
+              : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/90'
+          }`}
+        >
+          <div className="flex items-center justify-between text-zinc-400 mb-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Transacciones GPS</span>
+            <MapPin className={`w-4 h-4 ${filterType === 'all' ? 'text-amber-400' : 'text-zinc-500'}`} />
           </div>
-          <span className="text-2xl font-black text-white font-mono">{totalWithGps}</span>
-          <p className="text-[10px] text-zinc-500 mt-1">Con coordenadas registradas</p>
-        </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-white font-mono">{transactions.length}</span>
+            {filterType === 'all' && (
+              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full">
+                Activo
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-zinc-500 mt-1">Ver todas las transacciones</p>
+        </button>
 
-        <div className="p-4 rounded-2xl bg-zinc-900 border border-emerald-900/40 shadow-md">
+        {/* Card 2: En Presencia */}
+        <button
+          type="button"
+          onClick={() => handleCardClick('presence')}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 shadow-md cursor-pointer border active:scale-[0.98] ${
+            filterType === 'presence'
+              ? 'bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/50 shadow-emerald-500/10'
+              : 'bg-zinc-900 border-emerald-900/40 hover:border-emerald-700/60 hover:bg-zinc-900/90'
+          }`}
+        >
           <div className="flex items-center justify-between text-emerald-400 mb-1">
-            <span className="text-[11px] font-bold uppercase">En Presencia</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">En Presencia</span>
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <span className="text-2xl font-black text-emerald-400 font-mono">{totalPresential}</span>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-emerald-400 font-mono">{totalPresential}</span>
+            {filterType === 'presence' && (
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                Activo
+              </span>
+            )}
+          </div>
           <p className="text-[10px] text-zinc-500 mt-1">Físicamente presentes (&lt;250m)</p>
-        </div>
+        </button>
 
-        <div className="p-4 rounded-2xl bg-zinc-900 border border-amber-900/40 shadow-md">
+        {/* Card 3: Aprobación Remota */}
+        <button
+          type="button"
+          onClick={() => handleCardClick('remote')}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 shadow-md cursor-pointer border active:scale-[0.98] ${
+            filterType === 'remote'
+              ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/50 shadow-amber-500/10'
+              : 'bg-zinc-900 border-amber-900/40 hover:border-amber-700/60 hover:bg-zinc-900/90'
+          }`}
+        >
           <div className="flex items-center justify-between text-amber-400 mb-1">
-            <span className="text-[11px] font-bold uppercase">Aprobación Remota</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Aprobación Remota</span>
             <AlertTriangle className="w-4 h-4" />
           </div>
-          <span className="text-2xl font-black text-amber-400 font-mono">{totalRemote}</span>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-amber-400 font-mono">{totalRemote}</span>
+            {filterType === 'remote' && (
+              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full">
+                Activo
+              </span>
+            )}
+          </div>
           <p className="text-[10px] text-zinc-500 mt-1">Aprobado a distancia (&gt;250m)</p>
-        </div>
+        </button>
 
-        <div className="p-4 rounded-2xl bg-zinc-900 border border-cyan-900/40 shadow-md">
+        {/* Card 4: Traspasos Campo */}
+        <button
+          type="button"
+          onClick={() => handleCardClick('field')}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 shadow-md cursor-pointer border active:scale-[0.98] ${
+            filterType === 'field'
+              ? 'bg-cyan-500/10 border-cyan-500 ring-2 ring-cyan-500/50 shadow-cyan-500/10'
+              : 'bg-zinc-900 border-cyan-900/40 hover:border-cyan-700/60 hover:bg-zinc-900/90'
+          }`}
+        >
           <div className="flex items-center justify-between text-cyan-400 mb-1">
-            <span className="text-[11px] font-bold uppercase">Traspasos Campo</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Traspasos Campo</span>
             <ArrowLeftRight className="w-4 h-4" />
           </div>
-          <span className="text-2xl font-black text-cyan-400 font-mono">{totalFieldTransfers}</span>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-cyan-400 font-mono">{totalFieldTransfers}</span>
+            {filterType === 'field' && (
+              <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/20 px-2 py-0.5 rounded-full">
+                Activo
+              </span>
+            )}
+          </div>
           <p className="text-[10px] text-zinc-500 mt-1">Mano a mano entre técnicos</p>
-        </div>
+        </button>
       </div>
 
-      {/* Filter Toolbar */}
+      {/* Search Toolbar (Preserving search, without button filters) */}
       <div className="p-3.5 bg-zinc-900/80 border border-zinc-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por técnico, código o solicitud..."
-            className="w-full pl-9 pr-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+            placeholder="Buscar por técnico, código de herramienta, registro..."
+            className="w-full pl-9 pr-20 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 px-2 py-0.5 text-[10px] font-bold text-zinc-400 hover:text-white bg-zinc-800 rounded-lg transition-colors"
+            >
+              Limpiar
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto text-xs font-semibold">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap ${
-              filterType === 'all'
-                ? 'bg-amber-500 text-black font-bold'
-                : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800'
-            }`}
-          >
-            Todas ({transactions.length})
-          </button>
-
-          <button
-            onClick={() => setFilterType('field')}
-            className={`px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap ${
-              filterType === 'field'
-                ? 'bg-amber-500 text-black font-bold'
-                : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800'
-            }`}
-          >
-            Traspasos Campo ({transferencias.length})
-          </button>
-
-          <button
-            onClick={() => setFilterType('remote')}
-            className={`px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap ${
-              filterType === 'remote'
-                ? 'bg-amber-500 text-black font-bold'
-                : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800'
-            }`}
-          >
-            Aprobación Remota ({totalRemote})
-          </button>
-
-          <button
-            onClick={() => setFilterType('presence')}
-            className={`px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap ${
-              filterType === 'presence'
-                ? 'bg-amber-500 text-black font-bold'
-                : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800'
-            }`}
-          >
-            Presenciales ({totalPresential})
-          </button>
+        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto text-xs shrink-0 text-zinc-400">
+          <span>
+            Mostrando <strong className="text-zinc-100 font-mono">{filtered.length}</strong> de{' '}
+            <span className="font-mono">{transactions.length}</span>
+          </span>
+          {filterType !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 hover:underline"
+            >
+              Restablecer filtro
+            </button>
+          )}
         </div>
       </div>
 

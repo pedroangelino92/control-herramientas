@@ -8,9 +8,10 @@ import {
   AlertCircle, 
   Building2, 
   UserPlus, 
-  Plus,
-  Trash2,
-  Sparkles
+  Plus, 
+  Trash2, 
+  Sparkles,
+  Lock
 } from 'lucide-react';
 import { Herramienta, Usuario, CondicionHerramienta, GeoLocationPoint } from '../../types';
 import { registerMultiplePrestamos, ToolLoanItem } from '../../services/toolService';
@@ -42,7 +43,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   preSelectedTool,
   onLoanCompleted,
 }) => {
-  const { userProfile, currentUser } = useAuth();
+  const { userProfile, currentUser, isSuperAdmin } = useAuth();
   const { showToast } = useToast();
 
   // Multi-tool list state where each tool has its individual condition and notes
@@ -190,6 +191,10 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
     } else {
       if (!currentSelectedTecnico) {
         showToast('warning', 'Selecciona un usuario', 'Debes elegir a un usuario de la lista.');
+        return;
+      }
+      if (currentSelectedTecnico.uid === currentUser?.uid && !isSuperAdmin) {
+        showToast('error', 'Auto-préstamo no permitido', 'Un administrador no puede auto-asignarse préstamos directos. Debes solicitar las herramientas desde la vista de técnico como Solicitud de Retiro para que otro administrador o el superadmin la autorice.');
         return;
       }
       targetTecnico = currentSelectedTecnico;
@@ -391,9 +396,20 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                     {activeTechnicians.map((tech) => (
                       <option key={tech.uid} value={tech.uid}>
                         {tech.nombre} ({tech.email}) • {tech.rol === 'admin' ? 'Administrador' : 'Técnico'}
+                        {tech.uid === currentUser?.uid ? ' (Tú)' : ''}
                       </option>
                     ))}
                   </select>
+
+                  {selectedTecnicoUid === currentUser?.uid && !isSuperAdmin && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-start gap-2.5">
+                      <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Auto-préstamo directo no permitido:</strong> Para retirar herramientas como administrador, debes ingresar como técnico y generar una <strong>Solicitud de Retiro</strong> para que otro administrador o el superadmin la autorice.
+                      </span>
+                    </div>
+                  )}
+
                   <p className="text-[11px] text-zinc-400">
                     Solo selecciona un usuario si esa persona de otro departamento ya cuenta con registro en el sistema.
                   </p>
@@ -582,14 +598,25 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
               >
                 Cancelar
               </button>
-              <button
-                type="submit"
-                disabled={loading || !adminGps || loadingGps || loanTools.length === 0}
-                className="px-5 py-2 text-xs font-bold text-black bg-amber-500 hover:bg-amber-400 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Procesando...' : !adminGps ? 'Activar GPS para Confirmar' : `Confirmar Préstamo (${loanTools.length})`}
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {recipientType === 'registered_user' && selectedTecnicoUid === currentUser?.uid && !isSuperAdmin ? (
+                <button
+                  type="button"
+                  disabled
+                  className="px-5 py-2 text-xs font-bold text-zinc-500 bg-zinc-800/80 border border-zinc-700/80 rounded-xl cursor-not-allowed opacity-75 flex items-center gap-2"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  Auto-préstamo bloqueado
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading || !adminGps || loadingGps || loanTools.length === 0}
+                  className="px-5 py-2 text-xs font-bold text-black bg-amber-500 hover:bg-amber-400 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Procesando...' : !adminGps ? 'Activar GPS para Confirmar' : `Confirmar Préstamo (${loanTools.length})`}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </form>
         )}

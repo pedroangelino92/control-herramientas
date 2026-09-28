@@ -14,11 +14,9 @@ import {
 import { db, handleFirestoreError, OperationType } from '../firebase/config';
 import { CategoriaItem, DEFAULT_CATEGORIES, Herramienta } from '../types';
 
-let isSeedingCategories = false;
-
 /**
  * Subscribes to real-time updates of the categories collection.
- * If the collection is empty, automatically seeds with standard default categories.
+ * Does NOT auto-seed when empty so the administrator has full control over their categories.
  */
 export const subscribeToCategorias = (
   onSuccess: (categorias: CategoriaItem[]) => void,
@@ -29,30 +27,7 @@ export const subscribeToCategorias = (
 
   return onSnapshot(
     q,
-    async (snapshot) => {
-      // If collection is empty and not currently seeding, seed defaults once
-      if (snapshot.empty && !isSeedingCategories) {
-        isSeedingCategories = true;
-        try {
-          const batch = writeBatch(db);
-          for (const catName of DEFAULT_CATEGORIES) {
-            const newDocRef = doc(collectionRef);
-            batch.set(newDocRef, {
-              nombre: catName,
-              descripcion: '',
-              fechaCreacion: new Date().toISOString(),
-              creadoPor: 'Sistema'
-            });
-          }
-          await batch.commit();
-        } catch (seedErr) {
-          console.error('Error auto-seeding categories:', seedErr);
-        } finally {
-          isSeedingCategories = false;
-        }
-        return;
-      }
-
+    (snapshot) => {
       const items: CategoriaItem[] = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data(),
@@ -65,6 +40,45 @@ export const subscribeToCategorias = (
       handleFirestoreError(error, OperationType.LIST, 'categorias');
     }
   );
+};
+
+/**
+ * Explicitly restores standard default categories into Firestore.
+ * Only called when explicitly requested by an administrator.
+ */
+export const seedDefaultCategorias = async (
+  creadoPor: string = 'Sistema'
+): Promise<void> => {
+  try {
+    const collectionRef = collection(db, 'categorias');
+    const existingSnap = await getDocs(collectionRef);
+    const existingNames = new Set(
+      existingSnap.docs.map((d) => (d.data().nombre || '').trim().toLowerCase())
+    );
+
+    const batch = writeBatch(db);
+    let countToAdd = 0;
+
+    for (const catName of DEFAULT_CATEGORIES) {
+      if (!existingNames.has(catName.toLowerCase())) {
+        const newDocRef = doc(collectionRef);
+        batch.set(newDocRef, {
+          nombre: catName,
+          descripcion: '',
+          fechaCreacion: new Date().toISOString(),
+          creadoPor: creadoPor.trim() || 'Sistema'
+        });
+        countToAdd++;
+      }
+    }
+
+    if (countToAdd > 0) {
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'categorias');
+    throw error;
+  }
 };
 
 /**

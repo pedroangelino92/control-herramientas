@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, AlertTriangle, Wrench, RotateCcw } from 'lucide-react';
+import { X, CheckCircle2, AlertTriangle, Wrench, RotateCcw, Lock } from 'lucide-react';
 import { Prestamo, CondicionHerramienta, EstadoHerramienta, GeoLocationPoint } from '../../types';
 import { returnHerramientaLoan } from '../../services/toolService';
 import { captureCurrentLocation } from '../../services/geoService';
@@ -20,8 +20,14 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
   prestamo,
   onReturnCompleted,
 }) => {
-  const { userProfile, currentUser } = useAuth();
+  const { userProfile, currentUser, isSuperAdmin } = useAuth();
   const { showToast } = useToast();
+
+  const isOwnLoan = 
+    prestamo?.tecnicoUid === currentUser?.uid ||
+    (!!prestamo?.tecnicoEmail && !!currentUser?.email && prestamo.tecnicoEmail.toLowerCase() === currentUser.email.toLowerCase());
+
+  const canReceiveReturn = isSuperAdmin || !isOwnLoan;
 
   const [condicionDevolucion, setCondicionDevolucion] = useState<CondicionHerramienta>('Bueno');
   const [observaciones, setObservaciones] = useState('');
@@ -46,6 +52,11 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canReceiveReturn) {
+      showToast('error', 'Auto-recepción no permitida', 'No puedes auto-recibir la devolución de una herramienta que tienes asignada. Debe ser recibida e inspeccionada por otro administrador o el superadmin.');
+      return;
+    }
 
     let finalGps = adminGps;
     if (!finalGps) {
@@ -137,6 +148,18 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
           </div>
         </div>
 
+        {!canReceiveReturn && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4 text-xs text-amber-300 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-white text-xs">Auto-recepción no permitida</h4>
+              <p className="mt-1 text-zinc-300 leading-relaxed">
+                Tú eres la persona que retiró esta herramienta ({prestamo.tecnicoNombre}). Por política de control interno, otro administrador o el superadmin debe inspeccionar físicamente su estado y registrar el ingreso al almacén.
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1">
@@ -195,11 +218,24 @@ export const ReturnLoanModal: React.FC<ReturnLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading || !adminGps || loadingGps}
+              disabled={loading || !adminGps || loadingGps || !canReceiveReturn}
               className="px-5 py-2 text-sm font-bold text-black bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {loading ? 'Guardando...' : !adminGps ? 'Activar GPS para Devolver' : 'Confirmar Devolución'}
-              <CheckCircle2 className="w-4 h-4" />
+              {!canReceiveReturn ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  Auto-recepción bloqueada
+                </>
+              ) : loading ? (
+                'Guardando...'
+              ) : !adminGps ? (
+                'Activar GPS para Devolver'
+              ) : (
+                <>
+                  Confirmar Devolución
+                  <CheckCircle2 className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { MapPin, AlertTriangle, RefreshCw, CheckCircle2, Loader2, Navigation } from 'lucide-react';
+import { MapPin, AlertTriangle, RefreshCw, CheckCircle2, Loader2, Navigation, Radio, Compass } from 'lucide-react';
 import { GeoLocationPoint } from '../../types';
-import { captureCurrentLocation, requestLocationPermission } from '../../services/geoService';
+import { captureCurrentLocation, requestLocationPermission, getAccuracyQuality } from '../../services/geoService';
 import { useToast } from '../../contexts/ToastContext';
 
 interface GpsRequirementNoticeProps {
@@ -49,12 +49,17 @@ export const GpsRequirementNotice: React.FC<GpsRequirementNoticeProps> = ({
 
   // Case 1: GPS successfully acquired
   if (gps) {
+    const accuracyInfo = getAccuracyQuality(gps.accuracy);
+
     if (compact) {
       return (
         <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-[11px]">
           <span className="flex items-center gap-1.5 font-medium truncate">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate">GPS verificado: {gps.latitude.toFixed(4)}, {gps.longitude.toFixed(4)}</span>
+            <span className="truncate">GPS: {gps.latitude.toFixed(4)}, {gps.longitude.toFixed(4)}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded border font-semibold ${accuracyInfo.colorClass}`}>
+              {accuracyInfo.shortLabel}
+            </span>
           </span>
           <button
             type="button"
@@ -76,11 +81,17 @@ export const GpsRequirementNotice: React.FC<GpsRequirementNoticeProps> = ({
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-white text-[11px] truncate">
-              Ubicación GPS registrada
-            </p>
-            <p className="text-[10px] text-emerald-300/80 font-mono truncate">
-              {gps.latitude.toFixed(5)}, {gps.longitude.toFixed(5)} {gps.accuracy ? `(±${gps.accuracy}m)` : ''}
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-white text-[11px] truncate">
+                Ubicación GPS registrada
+              </p>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-bold flex items-center gap-1 ${accuracyInfo.colorClass}`}>
+                <Radio className="w-2.5 h-2.5" />
+                {accuracyInfo.label}
+              </span>
+            </div>
+            <p className="text-[10px] text-emerald-300/80 font-mono truncate mt-0.5">
+              Lat: {gps.latitude.toFixed(5)} • Lon: {gps.longitude.toFixed(5)}
             </p>
           </div>
         </div>
@@ -101,9 +112,14 @@ export const GpsRequirementNotice: React.FC<GpsRequirementNoticeProps> = ({
   // Case 2: Loading / Acquiring
   if (isBusy) {
     return (
-      <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-xs text-amber-300 animate-pulse">
-        <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
-        <span className="font-medium text-[11px]">Detectando coordenadas GPS del teléfono...</span>
+      <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs text-amber-300">
+        <div className="flex items-center gap-2.5">
+          <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
+          <div>
+            <span className="font-bold text-[11px] block">Sintonizando señal GPS...</span>
+            <span className="text-[10px] text-amber-300/80">Si estás en un sótano o almacén techado, acércate a una puerta o ventana.</span>
+          </div>
+        </div>
       </div>
     );
   }

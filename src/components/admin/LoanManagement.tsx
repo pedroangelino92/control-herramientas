@@ -14,7 +14,10 @@ import {
   Download,
   Tag,
   UserPlus,
-  Trash2
+  Trash2,
+  Lock,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Prestamo, Herramienta, SUPERADMIN_EMAIL } from '../../types';
 import { deletePrestamo } from '../../services/toolService';
@@ -43,6 +46,8 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('all'); // all, Activo, Devuelto, Atrasado
   const [loanToDelete, setLoanToDelete] = useState<Prestamo | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   const handleDeleteLoan = async () => {
     if (!loanToDelete || !loanToDelete.id) return;
@@ -85,6 +90,9 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
 
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredLoans.length / itemsPerPage) || 1;
+  const paginatedLoans = filteredLoans.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const activeCount = prestamos.filter((p) => p.estado === 'Activo').length;
   const overdueCount = prestamos.filter(
@@ -199,7 +207,10 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Buscar por técnico, herramienta o código..."
               className="w-full pl-10 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
@@ -208,7 +219,10 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
           <div className="flex gap-2">
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full px-3.5 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">Todos los registros</option>
@@ -240,9 +254,13 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredLoans.map((loan) => {
+          {paginatedLoans.map((loan) => {
             const isActivo = loan.estado === 'Activo';
             const isOverdue = isActivo && new Date(loan.fechaEstimadaDevolucion) < now;
+            const isOwnLoan = 
+              loan.tecnicoUid === currentUser?.uid ||
+              (!!loan.tecnicoEmail && !!currentUser?.email && loan.tecnicoEmail.toLowerCase() === currentUser.email.toLowerCase());
+            const canReturnThisLoan = isSuperAdmin || !isOwnLoan;
 
             return (
               <div
@@ -295,6 +313,13 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                         >
                           {isOverdue ? 'Atrasado / Vencido' : loan.estado}
                         </span>
+
+                        {isOwnLoan && isActivo && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-blue-400" />
+                            Retirado por ti
+                          </span>
+                        )}
                       </div>
 
                       {/* Details row */}
@@ -343,13 +368,25 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                   {/* Right: Actions */}
                   <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
                     {isActivo && (
-                      <button
-                        onClick={() => onOpenReturnModal(loan)}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-md shadow-emerald-950/40"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        Registrar Devolución
-                      </button>
+                      !canReturnThisLoan ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-zinc-500 text-xs font-bold cursor-not-allowed opacity-75"
+                          title="No puedes auto-recibir tus propias herramientas. Debe recibirlo otro administrador o el superadmin."
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                          Requiere otro admin
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onOpenReturnModal(loan)}
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-md shadow-emerald-950/40"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Registrar Devolución
+                        </button>
+                      )
                     )}
 
                     {isSuperAdmin && (
@@ -367,6 +404,38 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-zinc-800 text-xs">
+              <span className="text-zinc-500 text-[11px]">
+                Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredLoans.length)} de {filteredLoans.length} registros
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 text-xs"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Anterior</span>
+                </button>
+                <span className="px-2 text-zinc-400 font-bold">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 text-xs"
+                >
+                  <span>Siguiente</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -185,3 +185,56 @@ export const getGoogleMapsDirectionsUrl = (
  * (e.g. Almacén or same jobsite)
  */
 export const PRESENCE_DISTANCE_THRESHOLD_METERS = 250;
+
+/**
+ * Returns accuracy quality label and color based on GPS radius in meters
+ */
+export const getAccuracyQuality = (accuracyMeters?: number | null): {
+  label: string;
+  shortLabel: string;
+  colorClass: string;
+  isGood: boolean;
+} => {
+  if (accuracyMeters === undefined || accuracyMeters === null || isNaN(accuracyMeters)) {
+    return {
+      label: 'Precisión desconocida',
+      shortLabel: 'GPS',
+      colorClass: 'text-zinc-400 bg-zinc-800 border-zinc-700',
+      isGood: true,
+    };
+  }
+
+  if (accuracyMeters <= 20) {
+    return {
+      label: `Excelente (±${accuracyMeters}m)`,
+      shortLabel: `±${accuracyMeters}m`,
+      colorClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+      isGood: true,
+    };
+  }
+
+  if (accuracyMeters <= 60) {
+    return {
+      label: `Buena (±${accuracyMeters}m)`,
+      shortLabel: `±${accuracyMeters}m`,
+      colorClass: 'text-teal-400 bg-teal-500/10 border-teal-500/30',
+      isGood: true,
+    };
+  }
+
+  if (accuracyMeters <= 150) {
+    return {
+      label: `Aceptable / Red (±${accuracyMeters}m)`,
+      shortLabel: `±${accuracyMeters}m`,
+      colorClass: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+      isGood: true,
+    };
+  }
+
+  return {
+    label: `Aproximada / Antena (±${accuracyMeters}m)`,
+    shortLabel: `±${accuracyMeters}m`,
+    colorClass: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+    isGood: false,
+  };
+};

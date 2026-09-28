@@ -11,7 +11,9 @@ import {
   Ban, 
   Wrench,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { SolicitudRetiro } from '../../types';
 import { cancelarSolicitudRetiro } from '../../services/toolService';
@@ -30,6 +32,8 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
   const { showToast } = useToast();
   const [filterState, setFilterState] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   const [solicitudToCancel, setSolicitudToCancel] = useState<SolicitudRetiro | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -38,6 +42,12 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
     if (filterState === 'all') return true;
     return sol.estado === filterState;
   });
+
+  const totalPages = Math.ceil(filteredSolicitudes.length / itemsPerPage) || 1;
+  const paginated = filteredSolicitudes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleConfirmCancel = async () => {
     if (!solicitudToCancel?.id) return;
@@ -91,7 +101,10 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 border-b border-zinc-800 pb-3 overflow-x-auto text-xs font-medium">
         <button
-          onClick={() => setFilterState('all')}
+          onClick={() => {
+            setFilterState('all');
+            setCurrentPage(1);
+          }}
           className={`px-3 py-1.5 rounded-lg transition-colors ${
             filterState === 'all'
               ? 'bg-zinc-800 text-white font-bold'
@@ -101,7 +114,10 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
           Todas ({solicitudes.length})
         </button>
         <button
-          onClick={() => setFilterState('Pendiente')}
+          onClick={() => {
+            setFilterState('Pendiente');
+            setCurrentPage(1);
+          }}
           className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
             filterState === 'Pendiente'
               ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
@@ -112,7 +128,10 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
           <span>Pendientes ({solicitudes.filter((s) => s.estado === 'Pendiente').length})</span>
         </button>
         <button
-          onClick={() => setFilterState('Aprobada')}
+          onClick={() => {
+            setFilterState('Aprobada');
+            setCurrentPage(1);
+          }}
           className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
             filterState === 'Aprobada'
               ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30'
@@ -123,7 +142,10 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
           <span>Aprobadas ({solicitudes.filter((s) => s.estado === 'Aprobada').length})</span>
         </button>
         <button
-          onClick={() => setFilterState('Rechazada')}
+          onClick={() => {
+            setFilterState('Rechazada');
+            setCurrentPage(1);
+          }}
           className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
             filterState === 'Rechazada'
               ? 'bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30'
@@ -152,7 +174,7 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredSolicitudes.map((sol) => {
+          {paginated.map((sol) => {
             const isPending = sol.estado === 'Pendiente';
             const isApproved = sol.estado === 'Aprobada';
             const isRejected = sol.estado === 'Rechazada';
@@ -322,6 +344,38 @@ export const MySolicitudesView: React.FC<MySolicitudesViewProps> = ({
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-zinc-800 text-xs">
+              <span className="text-zinc-500 text-[11px]">
+                Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredSolicitudes.length)} de {filteredSolicitudes.length} solicitudes
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 text-xs"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Anterior</span>
+                </button>
+                <span className="px-2 text-zinc-400 font-bold">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 text-xs"
+                >
+                  <span>Siguiente</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

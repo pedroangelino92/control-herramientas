@@ -14,7 +14,7 @@ import {
   Compass,
   MapPin
 } from 'lucide-react';
-import { Herramienta, Prestamo, Usuario, SolicitudRetiro, TransferenciaCampo } from '../../types';
+import { Herramienta, Prestamo, Usuario, SolicitudRetiro, TransferenciaCampo, CategoriaItem } from '../../types';
 import { AdminSummary } from './AdminSummary';
 import { ToolInventory } from './ToolInventory';
 import { LoanManagement } from './LoanManagement';
@@ -32,6 +32,7 @@ interface AdminDashboardProps {
   usuarios: Usuario[];
   solicitudes: SolicitudRetiro[];
   transferencias?: TransferenciaCampo[];
+  categorias?: CategoriaItem[];
   onOpenQuickScanner: () => void;
   onSwitchToTechnician?: () => void;
 }
@@ -44,6 +45,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   usuarios,
   solicitudes,
   transferencias = [],
+  categorias = [],
   onOpenQuickScanner,
   onSwitchToTechnician,
 }) => {
@@ -122,6 +124,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'inventory' && (
           <ToolInventory
             herramientas={herramientas}
+            categorias={categorias}
             onOpenNewToolModal={() => {
               setToolToEdit(null);
               setIsToolModalOpen(true);
@@ -174,6 +177,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           setToolToEdit(null);
         }}
         toolToEdit={toolToEdit}
+        categorias={categorias}
       />
 
       <NewLoanModal

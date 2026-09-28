@@ -230,10 +230,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
           const isUserPending = user.estado === 'pendiente';
           const isUserActive = user.estado === 'activo';
           const isUserRejected = user.estado === 'rechazado';
-          const isUserAdmin = user.rol === 'admin';
+          const isUserSuperAdmin = user.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase() || user.rol === 'superadmin';
+          const isUserAdmin = !isUserSuperAdmin && user.rol === 'admin';
           const isCurrentSelf = user.uid === currentUser?.uid;
-
-          const isPermanentAdmin = user.email.toLowerCase() === 'pedroangelino92@gmail.com';
 
           return (
             <div
@@ -241,18 +240,24 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
               className={`bg-zinc-900 border rounded-2xl p-5 shadow-xl transition-all flex flex-col justify-between ${
                 isUserPending
                   ? 'border-amber-500/40 bg-amber-500/[0.03]'
+                  : isUserSuperAdmin
+                  ? 'border-purple-500/40 bg-purple-950/10'
                   : 'border-zinc-800 hover:border-zinc-700'
               }`}
             >
               <div>
                 {/* Header: Status and Role Badges */}
                 <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-1.5">
-                    {isUserAdmin ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {isUserSuperAdmin ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                        <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                        Super Administrador
+                      </span>
+                    ) : isUserAdmin ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         <ShieldCheck className="w-3.5 h-3.5" />
                         Administrador
-                        {isPermanentAdmin && <span className="text-[9px] font-normal text-amber-400/70 ml-0.5">(Permanente)</span>}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -393,15 +398,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
                 ) : (
                   <div className="flex items-center gap-2 w-full justify-between">
                     <div className="flex items-center gap-1.5">
-                      {isUserAdmin ? (
+                      {isUserSuperAdmin ? (
+                        <span className="text-[11px] font-semibold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+                          Cuenta Principal
+                        </span>
+                      ) : isUserAdmin ? (
                         <button
                           onClick={() => {
                             setActionUser(user);
                             setActionType('make_tech');
                           }}
-                          disabled={isCurrentSelf || isPermanentAdmin}
+                          disabled={isCurrentSelf || !isSuperAdmin}
                           className="px-2.5 py-1 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-40"
-                          title={isPermanentAdmin ? 'El Administrador Principal no puede ser degradado' : 'Cambiar rol a técnico'}
+                          title={!isSuperAdmin ? 'Solo el Superadministrador puede modificar roles de administradores' : 'Cambiar rol a técnico'}
                         >
                           Cambiar a Técnico
                         </button>
@@ -411,8 +420,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ usuarios }) => {
                             setActionUser(user);
                             setActionType('make_admin');
                           }}
-                          className="px-2.5 py-1 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors"
-                          title="Promover a Administrador"
+                          disabled={!isSuperAdmin}
+                          className="px-2.5 py-1 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors disabled:opacity-40"
+                          title={!isSuperAdmin ? 'Solo el Superadministrador puede promover administradores' : 'Promover a Administrador'}
                         >
                           Hacer Admin
                         </button>

@@ -78,9 +78,9 @@ export const ToolFormModal: React.FC<ToolFormModalProps> = ({
 
   const availableCategories = (categorias && categorias.length > 0)
     ? categorias.map((c) => c.nombre)
-    : DEFAULT_CATEGORIES;
+    : (toolToEdit?.categoria ? [toolToEdit.categoria] : ['General']);
 
-  const defaultCategory = availableCategories[0] || 'Herramientas Eléctricas';
+  const defaultCategory = availableCategories[0] || 'General';
 
   const [codigo, setCodigo] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -283,6 +283,11 @@ export const ToolFormModal: React.FC<ToolFormModalProps> = ({
                   </option>
                 ))}
               </select>
+              {categorias && categorias.length === 0 && (
+                <p className="text-[10px] text-amber-400/90 mt-1">
+                  No hay categorías registradas. Puedes crearlas en el almacén con el botón "Gestionar Categorías".
+                </p>
+              )}
             </div>
 
             <div>

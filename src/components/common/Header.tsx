@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Wrench, 
   ShieldCheck, 
@@ -8,7 +8,8 @@ import {
   Moon,
   Bell,
   Smartphone,
-  RotateCcw
+  RotateCcw,
+  WifiOff
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -39,6 +40,22 @@ export const Header: React.FC<HeaderProps> = ({
   const { showToast } = useToast();
 
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const isSuperAdmin = 
     currentUser?.email?.toLowerCase().trim() === SUPERADMIN_EMAIL.toLowerCase().trim() ||
@@ -90,6 +107,13 @@ export const Header: React.FC<HeaderProps> = ({
               }`}>
                 {isAdmin ? 'Admin' : 'Técnico'}
               </span>
+
+              {!isOnline && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1 shrink-0 animate-pulse">
+                  <WifiOff className="w-3 h-3 text-rose-400" />
+                  <span>Sin conexión</span>
+                </span>
+              )}
             </div>
             <p className="text-[10px] sm:text-xs text-zinc-400 truncate hidden sm:block">
               {isAdmin ? 'Control de Herramientas • Administración' : 'Control de Herramientas • Almacén'}
