@@ -107,6 +107,10 @@ export interface Prestamo {
   aprobadoEnPresencia?: boolean; // Si estaban a menos de 250m
   esTraspasoEnCampo?: boolean;
   transferenciaOrigenId?: string;
+  // Campos de alerta de vencimiento
+  alertaVencimientoOk?: boolean; // El admin dio OK a la alerta
+  ultimaAlertaVencimiento?: string; // Fecha (YYYY-MM-DD o ISO) del último aviso diario emitido
+  fechaProrrogada?: string; // Si se extendió la fecha, almacena la fecha anterior para auditoría
 }
 
 export interface ToastMessage {
@@ -182,7 +186,7 @@ export interface TransferenciaCampo {
   motivoRechazo?: string;
 }
 
-export type TipoNotificacion = 'solicitud' | 'aprobacion' | 'rechazo' | 'traspaso' | 'devolucion' | 'sistema';
+export type TipoNotificacion = 'solicitud' | 'aprobacion' | 'rechazo' | 'traspaso' | 'devolucion' | 'alerta_vencimiento' | 'sistema';
 
 export interface NotificacionSistema {
   id?: string;

@@ -11,7 +11,8 @@ import {
   Clock, 
   Volume2,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react';
 import { NotificacionSistema } from '../../types';
 import { 
@@ -94,6 +95,8 @@ export const NotificationDrawerModal: React.FC<NotificationDrawerModalProps> = (
         return <XCircle className="w-4 h-4 text-rose-400" />;
       case 'traspaso':
         return <ArrowLeftRight className="w-4 h-4 text-cyan-400" />;
+      case 'alerta_vencimiento':
+        return <AlertTriangle className="w-4 h-4 text-rose-400" />;
       default:
         return <Wrench className="w-4 h-4 text-amber-400" />;
     }

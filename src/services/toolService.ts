@@ -496,6 +496,65 @@ export const deletePrestamo = async (
   }
 };
 
+/**
+ * Extiende la fecha estimada de devolución de un préstamo activo.
+ * Pausa las alertas de vencimiento hasta que se alcance la nueva fecha límite.
+ */
+export const extenderFechaPrestamo = async (
+  prestamoId: string,
+  nuevaFechaEstimadaDevolucion: string,
+  adminUid: string,
+  adminNombre: string
+): Promise<void> => {
+  try {
+    const prestamoRef = doc(db, 'prestamos', prestamoId);
+    const prestamoSnap = await getDoc(prestamoRef);
+    if (!prestamoSnap.exists()) {
+      throw new Error('Préstamo no encontrado.');
+    }
+    const data = prestamoSnap.data() as Prestamo;
+    const fechaAnterior = data.fechaEstimadaDevolucion;
+
+    await updateDoc(prestamoRef, {
+      fechaEstimadaDevolucion: nuevaFechaEstimadaDevolucion,
+      fechaProrrogada: fechaAnterior,
+      alertaVencimientoOk: false, // Se resetea el flag para cuando llegue la nueva fecha
+      ultimaAlertaVencimiento: '', // Se limpia para reactivarse cuando llegue la nueva fecha
+      estado: 'Activo', // Si estaba atrasado, vuelve a activo
+    });
+
+    // Registrar en auditoría
+    await registrarAuditoria({
+      tipo: 'prestamo_creado',
+      usuarioUid: adminUid,
+      usuarioEmail: '',
+      usuarioNombre: adminNombre,
+      detalles: `Fecha extendida para equipo ${data.herramientaNombre} (${data.herramientaCodigo}). Nueva fecha: ${new Date(nuevaFechaEstimadaDevolucion).toLocaleDateString()}`,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `prestamos/${prestamoId}`);
+  }
+};
+
+/**
+ * Da el visto bueno ("OK") a la alerta de vencimiento por hoy.
+ * Mantiene la notificación diaria (1 vez al día) mientras el equipo siga sin devolverse.
+ */
+export const confirmarAlertaVencimiento = async (
+  prestamoId: string,
+  fechaHoyStr: string = new Date().toISOString().slice(0, 10)
+): Promise<void> => {
+  try {
+    const prestamoRef = doc(db, 'prestamos', prestamoId);
+    await updateDoc(prestamoRef, {
+      alertaVencimientoOk: true,
+      ultimaAlertaVencimiento: fechaHoyStr,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `prestamos/${prestamoId}`);
+  }
+};
+
 // ==========================================
 // USUARIOS MANAGEMENT
 // ==========================================

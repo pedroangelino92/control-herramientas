@@ -58,7 +58,10 @@
         "condicionEntrega": { "type": "string" },
         "condicionDevolucion": { "type": "string" },
         "observacionesEntrega": { "type": "string" },
-        "observacionesDevolucion": { "type": "string" }
+        "observacionesDevolucion": { "type": "string" },
+        "alertaVencimientoOk": { "type": "boolean" },
+        "ultimaAlertaVencimiento": { "type": "string" },
+        "fechaProrrogada": { "type": "string" }
       },
       "required": ["herramientaId", "tecnicoUid", "fechaPrestamo", "estado"]
     },

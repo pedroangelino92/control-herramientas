@@ -17,10 +17,13 @@ import {
   Trash2,
   Lock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CalendarPlus,
+  Check,
+  X
 } from 'lucide-react';
 import { Prestamo, Herramienta, SUPERADMIN_EMAIL } from '../../types';
-import { deletePrestamo } from '../../services/toolService';
+import { deletePrestamo, extenderFechaPrestamo, confirmarAlertaVencimiento } from '../../services/toolService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
@@ -48,6 +51,53 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  // Estados para extender fecha de devolución
+  const [loanToExtend, setLoanToExtend] = useState<Prestamo | null>(null);
+  const [newExtendDueDate, setNewExtendDueDate] = useState<string>('');
+  const [isExtending, setIsExtending] = useState(false);
+  const [processingOkLoanId, setProcessingOkLoanId] = useState<string | null>(null);
+
+  const handleOpenExtendModal = (loan: Prestamo) => {
+    setLoanToExtend(loan);
+    // Sugerir +3 días o fecha actual + 3 días
+    const baseDate = new Date(loan.fechaEstimadaDevolucion);
+    const validBase = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+    const defaultNewDate = new Date(Math.max(validBase.getTime(), Date.now()) + 3 * 24 * 60 * 60 * 1000);
+    setNewExtendDueDate(defaultNewDate.toISOString().slice(0, 10));
+  };
+
+  const handleConfirmExtend = async () => {
+    if (!loanToExtend || !loanToExtend.id || !newExtendDueDate) return;
+    setIsExtending(true);
+    try {
+      await extenderFechaPrestamo(
+        loanToExtend.id,
+        new Date(newExtendDueDate + 'T23:59:59').toISOString(),
+        currentUser?.uid || 'admin',
+        currentUser?.displayName || 'Administrador'
+      );
+      showToast('success', 'Fecha de Devolución Extendida', `La nueva fecha límite es ${new Date(newExtendDueDate + 'T23:59:59').toLocaleDateString()}. Las alertas diarias quedan pausadas hasta que llegue este día.`);
+      setLoanToExtend(null);
+    } catch (err: any) {
+      showToast('error', 'Error al extender fecha', err.message || 'No se pudo actualizar.');
+    } finally {
+      setIsExtending(false);
+    }
+  };
+
+  const handleAcknowledgeAlert = async (loan: Prestamo) => {
+    if (!loan.id) return;
+    setProcessingOkLoanId(loan.id);
+    try {
+      await confirmarAlertaVencimiento(loan.id);
+      showToast('info', 'Alerta Confirmada (OK)', 'Se tomó conocimiento. Se te recordará nuevamente mañana si el equipo continúa sin devolverse.');
+    } catch (err: any) {
+      showToast('error', 'Error', err.message || 'No se pudo guardar la confirmación.');
+    } finally {
+      setProcessingOkLoanId(null);
+    }
+  };
 
   const handleDeleteLoan = async () => {
     if (!loanToDelete || !loanToDelete.id) return;
@@ -366,27 +416,62 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                   </div>
 
                   {/* Right: Actions */}
-                  <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
+                  <div className="flex items-center gap-2 shrink-0 self-end lg:self-center flex-wrap justify-end">
                     {isActivo && (
-                      !canReturnThisLoan ? (
+                      <>
+                        {/* Botón Extender Fecha */}
                         <button
                           type="button"
-                          disabled
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-zinc-500 text-xs font-bold cursor-not-allowed opacity-75"
-                          title="No puedes auto-recibir tus propias herramientas. Debe recibirlo otro administrador o el superadmin."
+                          onClick={() => handleOpenExtendModal(loan)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all shadow"
+                          title="Extender fecha límite de devolución para pausar las alertas"
                         >
-                          <Lock className="w-3.5 h-3.5" />
-                          Requiere otro admin
+                          <CalendarPlus className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Extender fecha</span>
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => onOpenReturnModal(loan)}
-                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-md shadow-emerald-950/40"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          Registrar Devolución
-                        </button>
-                      )
+
+                        {/* Botón OK de confirmación de alerta diaria si está vencido/cumplido */}
+                        {isOverdue && (
+                          <button
+                            type="button"
+                            onClick={() => handleAcknowledgeAlert(loan)}
+                            disabled={processingOkLoanId === loan.id}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
+                              loan.alertaVencimientoOk && loan.ultimaAlertaVencimiento === new Date().toISOString().slice(0, 10)
+                                ? 'bg-zinc-800/80 border-emerald-500/30 text-emerald-400'
+                                : 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
+                            }`}
+                            title="Confirmar visto bueno por hoy (alerta se mantendrá diariamente)"
+                          >
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>
+                              {loan.alertaVencimientoOk && loan.ultimaAlertaVencimiento === new Date().toISOString().slice(0, 10)
+                                ? 'OK (Avisado hoy)'
+                                : 'Dar OK'}
+                            </span>
+                          </button>
+                        )}
+
+                        {!canReturnThisLoan ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-zinc-500 text-xs font-bold cursor-not-allowed opacity-75"
+                            title="No puedes auto-recibir tus propias herramientas. Debe recibirlo otro administrador o el superadmin."
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            Requiere otro admin
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onOpenReturnModal(loan)}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-md shadow-emerald-950/40"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Registrar Devolución
+                          </button>
+                        )}
+                      </>
                     )}
 
                     {isSuperAdmin && (
@@ -451,6 +536,79 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
         isDestructive={true}
         isLoading={isDeleting}
       />
+
+      {/* Modal para Extender Fecha de Devolución */}
+      {loanToExtend && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div 
+            className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                  <CalendarPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Extender Fecha de Devolución</h3>
+                  <p className="text-xs text-zinc-400">Pausa las notificaciones diarias hasta la nueva fecha</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoanToExtend(null)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1 text-xs">
+              <p className="font-bold text-white truncate">{loanToExtend.herramientaNombre}</p>
+              <p className="text-zinc-400 font-mono text-[11px]">{loanToExtend.herramientaCodigo} • Técnico: {loanToExtend.tecnicoNombre}</p>
+              <p className="text-amber-400 text-[11px] pt-1">
+                Límite actual: {new Date(loanToExtend.fechaEstimadaDevolucion).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-zinc-300">
+                Nueva fecha límite de entrega:
+              </label>
+              <input
+                type="date"
+                value={newExtendDueDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setNewExtendDueDate(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm focus:outline-none focus:border-amber-500 transition-colors"
+                required
+              />
+              <p className="text-[11px] text-zinc-500 leading-tight">
+                Al guardar, la alerta se suspenderá automáticamente. Si llega esta nueva fecha y aún no se devuelve, la app volverá a notificarte una vez por día.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setLoanToExtend(null)}
+                disabled={isExtending}
+                className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmExtend}
+                disabled={isExtending || !newExtendDueDate}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black transition-all shadow-md active:scale-95 disabled:opacity-50"
+              >
+                {isExtending ? 'Guardando...' : 'Confirmar Nueva Fecha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

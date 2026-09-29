@@ -28,7 +28,8 @@ import {
 } from './services/geoService';
 import { 
   checkNotificationPermission, 
-  subscribeToMisNotificaciones 
+  subscribeToMisNotificaciones,
+  verificarYNotificarPrestamosVencidos
 } from './services/notificationService';
 import { subscribeToCategorias } from './services/categoryService';
 import { 
@@ -102,7 +103,14 @@ const MainContent: React.FC = () => {
     );
 
     const unsubLoans = subscribeToPrestamos(
-      (items) => setPrestamos(items),
+      (items) => {
+        setPrestamos(items);
+        if (isAdmin && currentUser?.uid) {
+          verificarYNotificarPrestamosVencidos(items, currentUser.uid).catch((err) =>
+            console.warn('Error verificando vencimientos:', err)
+          );
+        }
+      },
       undefined,
       (err) => console.error('Error fetching prestamos:', err)
     );

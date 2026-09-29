@@ -12,7 +12,7 @@ import {
   limit
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { NotificacionSistema, TipoNotificacion } from '../types';
+import { NotificacionSistema, TipoNotificacion, Prestamo } from '../types';
 
 /**
  * Checks if browser supports Web Notifications and returns current permission
@@ -257,4 +257,70 @@ export const marcarTodasNotificacionesLeidas = async (ids: string[]) => {
   } catch (err) {
     console.error('Error marking all notifications read:', err);
   }
+};
+
+/**
+ * Chequea los préstamos activos y notifica diariamente al administrador
+ * que realizó el préstamo cuando la fecha estimada de devolución se cumple o se vence.
+ * - Si el admin le dio OK, se repite 1 sola vez por día (comparando fecha en formato YYYY-MM-DD).
+ * - Si se extiende la fecha límite, se pospone automáticamente hasta la nueva fecha.
+ * - Si el préstamo se devuelve (estado !== 'Activo'), no se notifica.
+ */
+export const verificarYNotificarPrestamosVencidos = async (
+  prestamos: Prestamo[],
+  adminUidActual: string
+): Promise<number> => {
+  const hoyStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const now = new Date();
+  let notificacionesGeneradas = 0;
+
+  for (const prestamo of prestamos) {
+    // Solo préstamos activos del admin actual (o si el admin prestó la herramienta)
+    if (prestamo.estado !== 'Activo') continue;
+    if (prestamo.adminUid !== adminUidActual) continue;
+    if (!prestamo.fechaEstimadaDevolucion) continue;
+
+    const fechaLimite = new Date(prestamo.fechaEstimadaDevolucion);
+    // Verificar si la fecha límite ya se cumplió o venció
+    if (fechaLimite <= now) {
+      // Verificar si ya se envió la notificación el día de hoy
+      if (prestamo.ultimaAlertaVencimiento === hoyStr) {
+        // Ya fue alertado hoy, esperamos hasta mañana
+        continue;
+      }
+
+      // Si no fue alertado hoy, creamos la notificación y sonido en el dispositivo
+      const diasAtraso = Math.floor((now.getTime() - fechaLimite.getTime()) / (1000 * 60 * 60 * 24));
+      const estadoTexto = diasAtraso > 0 ? `venció hace ${diasAtraso} día(s)` : 'vence hoy';
+
+      await crearNotificacion(
+        prestamo.adminUid,
+        `⚠️ Fecha de devolución cumplida: ${prestamo.herramientaNombre}`,
+        `La herramienta ${prestamo.herramientaNombre} (${prestamo.herramientaCodigo}) en poder de ${prestamo.tecnicoNombre} ${estadoTexto}. Confirma recepción o extiende la fecha límite.`,
+        'alerta_vencimiento',
+        {
+          prestamoId: prestamo.id,
+          herramientaId: prestamo.herramientaId,
+          fechaEstimada: prestamo.fechaEstimadaDevolucion,
+          alertaVencimiento: true,
+        }
+      );
+
+      // Actualizar en el préstamo la fecha del último aviso diario
+      if (prestamo.id) {
+        try {
+          const prestamoRef = doc(db, 'prestamos', prestamo.id);
+          await updateDoc(prestamoRef, {
+            ultimaAlertaVencimiento: hoyStr,
+          });
+        } catch (e) {
+          console.warn('No se pudo marcar fecha de última alerta en préstamo:', e);
+        }
+      }
+
+      notificacionesGeneradas++;
+    }
+  }
+
+  return notificacionesGeneradas;
 };
