@@ -16,6 +16,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { PWAInstallButton } from './PWAInstallButton';
 import { ResetDatabaseModal } from './ResetDatabaseModal';
 import { SUPERADMIN_EMAIL } from '../../types';
+import { useBackHandler } from '../../contexts/BackNavigationContext';
 
 interface HeaderProps {
   onOpenScanner?: () => void;
@@ -43,6 +44,15 @@ export const Header: React.FC<HeaderProps> = ({
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
+
+  // Close reset modal when phone back button is pressed
+  useBackHandler(() => {
+    if (isResetModalOpen) {
+      setIsResetModalOpen(false);
+      return true;
+    }
+    return false;
+  }, isResetModalOpen, 100);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);

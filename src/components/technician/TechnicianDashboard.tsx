@@ -24,6 +24,7 @@ import { TransferInFieldModal } from './TransferInFieldModal';
 import { IncomingTransferModal } from './IncomingTransferModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useBackHandler } from '../../contexts/BackNavigationContext';
 
 interface TechnicianDashboardProps {
   herramientas: Herramienta[];
@@ -59,6 +60,33 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [toolToTransfer, setToolToTransfer] = useState<Herramienta | null>(null);
   const [incomingTransferToReview, setIncomingTransferToReview] = useState<TransferenciaCampo | null>(null);
+
+  // 1. Prioridad alta: Si hay un modal o carrito abierto en técnico, cerrarlo con el botón atrás del teléfono
+  useBackHandler(() => {
+    if (isCartModalOpen) {
+      setIsCartModalOpen(false);
+      return true;
+    }
+    if (isTransferModalOpen) {
+      setIsTransferModalOpen(false);
+      setToolToTransfer(null);
+      return true;
+    }
+    if (incomingTransferToReview) {
+      setIncomingTransferToReview(null);
+      return true;
+    }
+    return false;
+  }, isCartModalOpen || isTransferModalOpen || Boolean(incomingTransferToReview), 80);
+
+  // 2. Prioridad media: Si el técnico está en otra pestaña (catálogo, solicitudes, historial), volver a la principal 'assigned'
+  useBackHandler(() => {
+    if (activeTab !== 'assigned') {
+      setActiveTab('assigned');
+      return true;
+    }
+    return false;
+  }, activeTab !== 'assigned', 30);
 
   // Filter tools assigned to this technician
   const assignedTools = herramientas.filter(

@@ -27,6 +27,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { CategoryManagementModal } from './CategoryManagementModal';
 import { ToolCsvModal } from './ToolCsvModal';
+import { useBackHandler } from '../../contexts/BackNavigationContext';
 
 interface ToolInventoryProps {
   herramientas: Herramienta[];
@@ -59,6 +60,23 @@ export const ToolInventory: React.FC<ToolInventoryProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+
+  // Cerrar modales internos de ToolInventory con el botón atrás del teléfono
+  useBackHandler(() => {
+    if (toolToDelete) {
+      setToolToDelete(null);
+      return true;
+    }
+    if (isCategoryModalOpen) {
+      setIsCategoryModalOpen(false);
+      return true;
+    }
+    if (isCsvModalOpen) {
+      setIsCsvModalOpen(false);
+      return true;
+    }
+    return false;
+  }, Boolean(toolToDelete) || isCategoryModalOpen || isCsvModalOpen, 90);
 
   // Filter tools
   const filteredTools = herramientas.filter((tool) => {

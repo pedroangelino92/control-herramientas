@@ -27,6 +27,7 @@ import { deletePrestamo, extenderFechaPrestamo, confirmarAlertaVencimiento } fro
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import { useBackHandler } from '../../contexts/BackNavigationContext';
 
 interface LoanManagementProps {
   prestamos: Prestamo[];
@@ -57,6 +58,19 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
   const [newExtendDueDate, setNewExtendDueDate] = useState<string>('');
   const [isExtending, setIsExtending] = useState(false);
   const [processingOkLoanId, setProcessingOkLoanId] = useState<string | null>(null);
+
+  // Cerrar modales internos de LoanManagement con el botón atrás del teléfono
+  useBackHandler(() => {
+    if (loanToExtend) {
+      setLoanToExtend(null);
+      return true;
+    }
+    if (loanToDelete) {
+      setLoanToDelete(null);
+      return true;
+    }
+    return false;
+  }, Boolean(loanToExtend) || Boolean(loanToDelete), 90);
 
   const handleOpenExtendModal = (loan: Prestamo) => {
     setLoanToExtend(loan);

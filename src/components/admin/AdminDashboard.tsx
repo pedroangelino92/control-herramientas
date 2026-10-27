@@ -23,6 +23,7 @@ import { GeoAuditView } from './GeoAuditView';
 import { ToolFormModal } from './ToolFormModal';
 import { NewLoanModal } from './NewLoanModal';
 import { ReturnLoanModal } from './ReturnLoanModal';
+import { useBackHandler } from '../../contexts/BackNavigationContext';
 
 interface AdminDashboardProps {
   herramientas: Herramienta[];
@@ -58,6 +59,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [prestamoToReturn, setPrestamoToReturn] = useState<Prestamo | null>(null);
+
+  // 1. Prioridad alta: Si hay un modal abierto en AdminDashboard, cerrarlo con el botón atrás del teléfono
+  useBackHandler(() => {
+    if (isToolModalOpen) {
+      setIsToolModalOpen(false);
+      setToolToEdit(null);
+      return true;
+    }
+    if (isNewLoanOpen) {
+      setIsNewLoanOpen(false);
+      setPreSelectedToolForLoan(null);
+      return true;
+    }
+    if (isReturnModalOpen) {
+      setIsReturnModalOpen(false);
+      setPrestamoToReturn(null);
+      return true;
+    }
+    return false;
+  }, isToolModalOpen || isNewLoanOpen || isReturnModalOpen, 80);
+
+  // 2. Prioridad media: Si el administrador está en una subpestaña (ej. inventario, préstamos, solicitudes), volver al menú principal 'summary'
+  useBackHandler(() => {
+    if (activeTab !== 'summary') {
+      setActiveTab('summary');
+      return true;
+    }
+    return false;
+  }, activeTab !== 'summary', 30);
 
   const pendingUsersCount = usuarios.filter((u) => u.estado === 'pendiente').length;
   const pendingSolicitudesCount = solicitudes.filter((s) => s.estado === 'Pendiente').length;
